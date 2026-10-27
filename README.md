@@ -1,4 +1,4 @@
-# Demand Gen Hub
+# Global Campaigns Hub
 
 Turns a GTM strategy into an integrated demand gen plan. It starts from the marketing-sourced pipeline target, works back through the funnel, and plans the programs, buying committee, calendar and owners that deliver it. Paid media is one workstream, handed off as a brief to the [Paid Media Hub](https://github.com/kristinejoy0419/paid-media-hub).
 
