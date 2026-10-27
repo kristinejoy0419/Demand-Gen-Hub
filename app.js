@@ -1036,8 +1036,8 @@
     ['Overview', [['onepage', 'Plan on a page']], 'The number, the gap to what sales needs, the budget, and what needs attention'],
     ['HQ strategy', [['campaigns', 'Campaigns'], ['funnel', 'Funnel & targets'], ['channels', 'Channel mix'], ['quarters', 'Quarterly plan']], 'What is the number, how do we get there, and what are we running?'],
     ['Regions', [['regions', 'Regional plans'], ['committee', 'Buying committee & ABM']], 'Are the regions bought in, and what are they running?'],
-    ['Execution', [['actions', 'Action list'], ['pacing', 'Pacing'], ['risks', 'Risks'], ['scenarios', 'Scenarios & asks']], 'What is due now, are we on track, and what do we do if we are not?'],
-    ['More', [['summary', 'Funnel summary'], ['calendar', 'Calendar'], ['owners', 'Team & owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['checks', 'Check the math']], 'Supporting detail: calendar, team, the paid brief, measurement, and a math check']
+    ['Execution', [['actions', 'Action list'], ['pacing', 'Pacing'], ['summary', 'Funnel summary'], ['calendar', 'Timeline'], ['risks', 'Risks'], ['scenarios', 'Scenarios & asks']], 'What is due now, are we on track, and what do we do if we are not?'],
+    ['More', [['owners', 'Team & owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['checks', 'Check the math']], 'Supporting detail: team, the paid brief, measurement, and a math check']
   ];
   const TABS = TAB_GROUPS.flatMap((g) => g[1]);
   function renderTabs() {
@@ -1349,7 +1349,7 @@
         return '<td class="h" style="background:color-mix(in srgb,var(--heat1) ' + Math.round(a * 85) + '%,var(--heat0));color:' + (a > 0.55 ? 'var(--accent-ink)' : 'var(--ink)') + '">' + fmtInt(v) + '</td>';
       }).join('') + '</tr>').join('');
       const totals = P.monthly.map((v) => '<td class="n">' + fmtInt(v) + '</td>').join('');
-      return '<div><h2>Calendar</h2><p class="lead">MQLs each program delivers by month. Always-on programs keep pipeline predictable; bursts stack on launches, events and buying seasons.</p></div>' +
+      return '<div><h2>Timeline</h2><p class="lead">MQLs each program delivers by month. Always-on programs keep pipeline predictable; bursts stack on launches, events and buying seasons.</p></div>' +
         '<div class="out"><table class="t heat" data-export><thead><tr><th>Program</th><th>Motion</th>' + head + '</tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td>All programs</td><td></td>' + totals + '</tr></tfoot></table></div>';
     },
     owners(P) {
@@ -1721,7 +1721,7 @@
       tie('Regions: committed = sum of their programs', sum(P.regions, (r) => r.committed), sum(P.regions, (r) => sum(r.plan.programs || [], (x) => Math.max(0, num(x.mql)))), fmtInt, 'Committed MQLs should match the uploaded program rows.');
       tie('Channels add up to total MQLs', sum(P.channels, (c) => c.mql), P.tot.mql, fmtInt, 'Channel mix tab.');
       tie('Channel budgets add up to program budget', sum(P.channels, (c) => c.cost), P.budget, money, 'Each channel is its MQLs × cost per MQL.');
-      tie('Months add up to total MQLs', sum(P.monthly, (x) => x), P.tot.mql, fmtInt, 'Calendar and pacing use these monthly numbers.');
+      tie('Months add up to total MQLs', sum(P.monthly, (x) => x), P.tot.mql, fmtInt, 'Timeline and pacing use these monthly numbers.');
       tie('Monthly spend adds up to budget', sum(P.monthlyCost, (x) => x), P.budget, money, 'Budget phasing by month.');
       tie('Quarters add up to total pipeline', sum(P.quarters, (q) => q.pipe), P.tot.pipe, money, 'Quarterly plan tab.');
       tie('Campaigns add up to total pipeline', sum(P.camps, (c) => c.pipe), P.camps.length ? P.tot.pipe : 0, money, 'Campaigns tab. Shares are rebalanced to 100% if they don\'t add up.');
