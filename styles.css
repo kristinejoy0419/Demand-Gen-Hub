@@ -233,14 +233,23 @@ details.camp .rname::after{content:" ▸";color:var(--faint);font-weight:400}
 details.camp[open] .rname::after{content:" ▾"}
 details.camp .rtop{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .rbody .wide{grid-column:1/-1}
-.tlrow{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:2px;margin-top:4px}
-.tl{height:26px;border-radius:4px;background:var(--heat0);position:relative;display:flex;align-items:flex-end;justify-content:center}
-.tl span{font-size:9px;color:var(--faint);line-height:1;padding-bottom:3px}
-.tl.on{background:var(--accent-soft)}
-.tl.on span{color:var(--accent)}
-.tl.launch{background:var(--accent)}
-.tl.launch span{color:var(--accent-ink);font-weight:700}
-.tl i{position:absolute;top:4px;width:6px;height:6px;border-radius:3px;background:var(--wine)}
+.tlwrap{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.tlhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.tlkey{font-size:11px;color:var(--muted);display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap}
+.tlkey .k{display:inline-block;width:12px;height:10px;border-radius:2px}
+.tlkey .k.on{background:var(--accent-soft);border:1px solid var(--accent)}
+.tlkey .k.launch{background:var(--accent)}
+.tlscroll{overflow-x:auto}
+.tlrow{display:grid;gap:3px}
+.tlc{display:flex;flex-direction:column;gap:3px;min-width:0}
+.tl{height:24px;border-radius:4px;background:var(--heat0);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--faint)}
+.tl.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.tl.launch{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.tl.pre{background:var(--wine-soft);color:var(--wine);font-weight:600}
+.tlm{display:flex;flex-direction:column;gap:2px}
+.tlm span{font-size:10px;line-height:1.2;color:var(--wine);font-weight:600;text-align:center}
+.tlmk{color:var(--wine);font-weight:600;margin-left:4px}
+details.camp .rbody{border-top:1px solid var(--line);padding-top:14px;margin:0 16px 16px;padding-left:0;padding-right:0}
 /* pacing, scenarios, one page */
 .up{color:var(--good);font-size:11px;font-weight:600}
 .down{color:var(--over);font-size:11px;font-weight:600}
