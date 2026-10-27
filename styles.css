@@ -166,3 +166,22 @@ svg text{fill:var(--muted);font-family:var(--f-body)}
 .region.empty{border-style:dashed}
 .region .gap{color:var(--over);font-weight:600}
 .region .ok{color:var(--good);font-weight:600}
+
+.tile.alert{background:var(--over-soft)}
+.tile.alert b{color:var(--over)}
+.risks{display:flex;flex-direction:column;gap:10px}
+details.risk{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+details.risk.triggered{border-color:var(--over)}
+details.risk>summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+details.risk>summary::-webkit-details-marker{display:none}
+details.risk .rtop{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+details.risk .rname{font-size:15px}
+details.risk .rname::after{content:" ▸";color:var(--faint);font-weight:400}
+details.risk[open] .rname::after{content:" ▾"}
+.rbody{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 18px;padding:0 16px 16px}
+.rbody h4{margin:0 0 4px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rbody p{margin:0}
+.rbody .act{background:var(--accent-soft);border-radius:10px;padding:10px 12px}
+details.risk.triggered .rbody .act{background:var(--over-soft)}
+details.risk.triggered .rbody .act h4{color:var(--over)}
+@media (max-width:720px){.tiles{grid-template-columns:1fr 1fr}.tile b{font-size:24px}}

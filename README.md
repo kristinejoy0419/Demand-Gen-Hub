@@ -23,7 +23,7 @@ It's a static site with no build step.
 7. **Channels & programs:** email, webinars, events, content, SEO, AEO/GEO (AI answer engines), paid, partner, SDR plays and in-product signals. Each has an owner, funnel stage, motion (always-on, burst or both), who runs it (HQ, region or both), share of sourced pipeline and cost per MQL.
 8. **Launch moments:** launches, events and buying seasons by plan month. They drive the bursts.
 9. **Regional plans:** each regional lead picks their region, sets a status (not started, draft, submitted), enters their own programs (month, budget, MQLs) and what they adapt locally. *Copy my plan* puts the plan on the clipboard to send to HQ; HQ pastes it under *Paste a region's plan* and it lands in the roll-up.
-10. **Risks & assumptions:** each risk's likelihood, owner and mitigation.
+10. **Risks & contingencies:** each risk's status (on track, watching, triggered), likelihood, pipeline at risk, owner, early warning signal, trigger threshold, contingency plan and what we do now to prevent it.
 
 ## Outputs (tabs)
 
@@ -39,7 +39,7 @@ It's a static site with no build step.
 | Owners | A RACI of workstreams by function. Click a cell to change it |
 | Paid brief | A copy-ready brief for the paid media team: target, markets, audiences, account lists, flighting, offers and KPIs |
 | Measurement | KPIs with targets, review cadence, owners and sources (including SEO and AEO/GEO), plus the operating rhythm with RevOps |
-| Risks | The risk register, sorted by likelihood |
+| Risks & contingencies | Counts by status and pipeline at risk, then one card per risk. Open a card to see its early warning signal, trigger, contingency plan and prevention. Triggered risks open first |
 
 Copy any tab's table to paste into Sheets, or copy it as CSV.
 
@@ -48,7 +48,7 @@ Copy any tab's table to paste into Sheets, or copy it as CSV.
 - Pipeline per segment = target × segment share. SQOs = segment pipeline ÷ deal size. MQLs = SQOs ÷ MQL → SQO rate. Leads = MQLs ÷ lead → MQL rate.
 - Program share splits pipeline, SQOs and MQLs across enabled programs. Budget = program MQLs × cost per MQL.
 - Regional roll-up: programs run by HQ (or HQ and regions together) deliver each region's share of their MQLs. Region-run programs set what each region owes, and the region's committed programs are measured against it.
-- Plan health flags SDR capacity, unsubmitted regions and coverage, late-year pipeline that closes next year, a paid-heavy mix, low pipeline to spend and high-likelihood risks.
+- Plan health flags SDR capacity, unsubmitted regions and coverage, late-year pipeline that closes next year, a paid-heavy mix, low pipeline to spend and triggered risks and risks whose signals are moving.
 - Monthly MQLs: always-on programs spread evenly; burst programs follow launch moments (a launch lifts its month and the next, events and seasons lift their own month); "both" blends the two 60/40.
 
 ## Notes

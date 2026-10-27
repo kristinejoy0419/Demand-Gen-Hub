@@ -3,8 +3,9 @@
 (function () {
   'use strict';
 
-  const STORE_KEY = 'demand-gen-hub:v2';
+  const STORE_KEY = 'demand-gen-hub:v3';
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const RISK_STATUS = ['On track', 'Watching', 'Triggered'];
   const FUNCTIONS = ['Demand gen', 'PMM', 'Field', 'Partner', 'Paid (shared svc)', 'Creative', 'RevOps', 'Sales / SDR'];
 
   /* ---------- example ---------- */
@@ -79,11 +80,26 @@
         LATAM: { status: 'Not started', adapt: '', programs: [] }
       },
       risks: [
-        { risk: 'A product launch slips a quarter', likelihood: 'High', owner: 'PMM', mitigation: 'Keep always-on programs running; move burst budget to the next moment' },
-        { risk: 'Commercial MQL → SQO lands below plan', likelihood: 'Medium', owner: 'Demand gen', mitigation: 'Tighten scoring with RevOps at the 30-day review' },
-        { risk: 'AI answers cut organic clicks', likelihood: 'Medium', owner: 'Content + web', mitigation: 'Shift SEO effort to AEO/GEO; track AI-referred MQLs' },
-        { risk: 'SDR capacity in launch months', likelihood: 'Medium', owner: 'Sales / SDR', mitigation: 'Route overflow to nurture; stagger regional launches' },
-        { risk: 'Regional plans not submitted on time', likelihood: 'Low', owner: 'Field', mitigation: 'Set a due date; the gap shows in the roll-up' }
+        { risk: 'A product launch slips a quarter', likelihood: 'High', impact: 3500000, status: 'Watching', owner: 'PMM',
+          signal: 'Launch readiness review: beta exit criteria, pricing and enablement sign-off', trigger: 'Launch date not locked 6 weeks before the burst',
+          contingency: 'Hold the launch burst budget. Keep always-on core programs running. Re-time the launch webinar and paid burst to the new date, and fill the gap with a governance pre-briefing for Tier 1 accounts.',
+          mitigation: 'Weekly launch stand-up with PMM; build creative so the date can change without rework' },
+        { risk: 'Commercial MQL → SQO lands below plan', likelihood: 'Medium', impact: 2000000, status: 'On track', owner: 'Demand gen',
+          signal: 'Weekly MQL → SQO rate by segment', trigger: 'Commercial below 13% for 3 weeks in a row',
+          contingency: 'Raise the MQL score threshold with RevOps, route low-fit MQLs to nurture, and move 10% of Commercial paid budget to in-product PQL plays.',
+          mitigation: 'Agree scoring and SLA with RevOps before the year starts; review at day 30' },
+        { risk: 'AI answers cut organic clicks', likelihood: 'Medium', impact: 1000000, status: 'Watching', owner: 'Content + web',
+          signal: 'Non-brand organic sessions vs AI citation rate on tracked prompts', trigger: 'Organic sessions down 15% quarter on quarter with no lift in AI-referred traffic',
+          contingency: 'Move half of the SEO content budget to AEO answer pages and comparison content, and add AI-referred MQLs to the weekly readout.',
+          mitigation: 'Structure priority pages as direct answers; track citations monthly' },
+        { risk: 'SDR capacity in launch months', likelihood: 'Medium', impact: 1500000, status: 'Watching', owner: 'Sales / SDR',
+          signal: 'Share of MQLs worked within 24 hours', trigger: 'Follow-up SLA under 85% in any week',
+          contingency: 'Route Tier 3 and Commercial MQLs to automated nurture, borrow 2 SDRs from outbound for the launch month, and send partner-sourced leads to partner managers.',
+          mitigation: 'Stagger regional launch dates; plan SDR coverage with sales a quarter ahead' },
+        { risk: 'Regional plans fall short of what regions owe', likelihood: 'Low', impact: 8900000, status: 'Triggered', owner: 'Field',
+          signal: 'Regional coverage in the roll-up', trigger: 'Any region under 70% coverage 4 weeks before the quarter starts',
+          contingency: 'HQ fills the gap with a global webinar series and a paid burst into the short regions, and escalates to the regional VP for a plan by the next forecast call.',
+          mitigation: 'Set a submission date for every region; review the roll-up weekly' }
       ],
       raci: {}
     };
@@ -293,9 +309,12 @@
     ], { noun: 'product', make: () => ({ name: '', share: 0, launch: 0 }) });
     editor('ed-risks', S.risks, [
       { key: 'risk', label: 'Risk or assumption', type: 'area', w: 150 },
+      { key: 'status', label: 'Status', type: 'select', options: RISK_STATUS },
       { key: 'likelihood', label: 'Likelihood', type: 'select', options: ['High', 'Medium', 'Low'] },
-      { key: 'owner', label: 'Owner', w: 90 }, { key: 'mitigation', label: 'Mitigation', type: 'area', w: 160 }
-    ], { noun: 'risk', make: () => ({ risk: '', likelihood: 'Medium', owner: '', mitigation: '' }) });
+      { key: 'impact', label: 'Pipeline at risk $', type: 'num', w: 80 }, { key: 'owner', label: 'Owner', w: 90 },
+      { key: 'signal', label: 'Early warning signal', type: 'area', w: 160 }, { key: 'trigger', label: 'Trigger', type: 'area', w: 150 },
+      { key: 'contingency', label: 'Contingency plan', type: 'area', w: 200 }, { key: 'mitigation', label: 'Prevent now', type: 'area', w: 160 }
+    ], { noun: 'risk', make: () => ({ risk: '', status: 'On track', likelihood: 'Medium', impact: 0, owner: '', signal: '', trigger: '', contingency: '', mitigation: '' }) });
     bindRegionPlan();
   }
 
@@ -354,7 +373,7 @@
   /* ---------- tabs ---------- */
   const TABS = [
     ['summary', 'Summary'], ['quarters', 'Quarterly plan'], ['funnel', 'Funnel by segment'], ['regions', 'Regional plans'], ['channels', 'Channel mix'],
-    ['committee', 'Buying committee & ABM'], ['calendar', 'Calendar'], ['owners', 'Owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['risks', 'Risks']
+    ['committee', 'Buying committee & ABM'], ['calendar', 'Calendar'], ['owners', 'Owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['risks', 'Risks & contingencies']
   ];
   function renderTabs() {
     $('tabs').innerHTML = TABS.map(([k, l]) => '<button class="tab" role="tab" type="button" data-tab="' + k + '" aria-selected="' + (k === tab) + '">' + l + '</button>').join('');
@@ -433,11 +452,30 @@
         '<p class="note">Quarters start at the plan start month. Budget follows when each program delivers its MQLs.</p>';
     },
     risks() {
-      const order = { High: 0, Medium: 1, Low: 2 };
-      const rows = S.risks.slice().sort((a, b) => (order[a.likelihood] ?? 3) - (order[b.likelihood] ?? 3)).map((r) => '<tr><td>' + esc(r.risk) + '</td><td>' + likePill(r.likelihood) + '</td><td>' + esc(r.owner) + '</td><td>' + esc(r.mitigation) + '</td></tr>').join('') ||
-        '<tr><td colspan="4" class="note">No risks yet. Add them in the left pane, under Risks &amp; assumptions.</td></tr>';
-      return '<div><h2>Risks &amp; assumptions</h2><p class="lead">What could move the number, who watches it, and what we do if it happens. Review it at every quarterly plan reset.</p></div>' +
-        '<div class="out"><table class="t" data-export><thead><tr><th>Risk or assumption</th><th>Likelihood</th><th>Owner</th><th>Mitigation</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      const so = { Triggered: 0, Watching: 1, 'On track': 2 }, lo = { High: 0, Medium: 1, Low: 2 };
+      const list = S.risks.slice().sort((a, b) => ((so[a.status] ?? 3) - (so[b.status] ?? 3)) || ((lo[a.likelihood] ?? 3) - (lo[b.likelihood] ?? 3)));
+      const count = (st) => list.filter((r) => (r.status || 'On track') === st).length;
+      const atRisk = list.filter((r) => r.status === 'Triggered' || r.status === 'Watching').reduce((t, r) => t + Math.max(0, num(r.impact)), 0);
+      const cards = list.map((r) => {
+        const st = r.status || 'On track';
+        return '<details class="risk ' + st.replace(' ', '-').toLowerCase() + '"' + (st === 'Triggered' ? ' open' : '') + '><summary>' +
+          '<span class="rtop">' + riskPill(st) + '<span class="note">' + esc(r.likelihood || '–') + ' likelihood' + (num(r.impact) ? ' · ' + money(num(r.impact)) + ' pipeline at risk' : '') + '</span>' + '</span>' +
+          '<b class="rname">' + esc(r.risk || 'Untitled risk') + '</b><span class="note">Owner: ' + esc(r.owner || '–') + '</span></summary>' +
+          '<div class="rbody">' +
+          '<div><h4>Early warning</h4><p>' + (esc(r.signal) || '<span class="note">Add the signal to watch</span>') + '</p></div>' +
+          '<div><h4>Trigger</h4><p>' + (esc(r.trigger) || '<span class="note">Add the threshold that sets off the plan</span>') + '</p></div>' +
+          '<div class="act"><h4>' + (st === 'Triggered' ? 'Do now' : 'If triggered') + '</h4><p>' + (esc(r.contingency) || '<span class="note">Add the contingency plan</span>') + '</p></div>' +
+          '<div><h4>Prevent now</h4><p>' + (esc(r.mitigation) || '<span class="note">–</span>') + '</p></div>' +
+          '</div></details>';
+      }).join('') || '<p class="note">No risks yet. Add them in the left pane, under Risks &amp; contingencies.</p>';
+      const exp = list.map((r) => '<tr><td>' + esc(r.risk) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.likelihood) + '</td><td>' + money(num(r.impact)) + '</td><td>' + esc(r.owner) + '</td><td>' + esc(r.signal) + '</td><td>' + esc(r.trigger) + '</td><td>' + esc(r.contingency) + '</td><td>' + esc(r.mitigation) + '</td></tr>').join('');
+      return '<div><h2>Risks &amp; contingencies</h2><p class="lead">Each risk has an early warning signal, the threshold that triggers it, and the plan we run when it does. Owners check their signals in the weekly pipeline review. Open a risk to see its plan.</p></div>' +
+        '<div class="tiles"><div class="tile' + (count('Triggered') ? ' alert' : '') + '"><span>Triggered</span><b>' + count('Triggered') + '</b><span>contingency running</span></div>' +
+        '<div class="tile"><span>Watching</span><b>' + count('Watching') + '</b><span>signal moving</span></div>' +
+        '<div class="tile"><span>On track</span><b>' + count('On track') + '</b><span>no action</span></div>' +
+        '<div class="tile"><span>Pipeline at risk</span><b>' + money(atRisk) + '</b><span>triggered and watching</span></div></div>' +
+        '<div class="risks">' + cards + '</div>' +
+        '<table class="t" data-export hidden><thead><tr><th>Risk</th><th>Status</th><th>Likelihood</th><th>Pipeline at risk</th><th>Owner</th><th>Early warning</th><th>Trigger</th><th>Contingency</th><th>Prevent now</th></tr></thead><tbody>' + exp + '</tbody></table>';
     },
     channels(P) {
       const maxW = Math.max(0.001, ...P.channels.map((c) => c.w));
@@ -504,6 +542,7 @@
   };
 
   function statusPill(st) { return '<span class="pill ' + (st === 'Submitted' ? 'on' : st === 'Draft' ? 'both' : 'burst') + '">' + esc(st) + '</span>'; }
+  function riskPill(st) { return '<span class="pill ' + (st === 'Triggered' ? 'burst' : st === 'Watching' ? 'both' : 'on') + '">' + esc(st) + '</span>'; }
   function likePill(l) { return '<span class="pill ' + (l === 'High' ? 'burst' : l === 'Medium' ? 'both' : 'on') + '">' + esc(l || '–') + '</span>'; }
   function coverCell(c) { return Math.round(Math.min(c, 9.99) * 100) + '%'; }
 
@@ -522,8 +561,9 @@
     out.push([paid > 0.35 ? 'watch' : 'ok', 'Paid is ' + pct(paid * 100) + ' of the mix' + (paid > 0.35 ? ', so the plan leans on a team you don\'t run' : '')]);
     const r = P.budget ? P.tot.pipe / P.budget : 0;
     out.push([r === 0 ? 'watch' : r < 5 ? 'fix' : r < 10 ? 'watch' : 'ok', r ? 'Pipeline to spend ' + r.toFixed(1) + 'x' : 'Set cost per MQL to see pipeline to spend']);
-    const high = S.risks.filter((x) => x.likelihood === 'High').length;
-    if (high) out.push(['watch', high + ' high-likelihood risk' + (high > 1 ? 's' : '') + ' on the Risks tab']);
+    const trig = S.risks.filter((x) => x.status === 'Triggered').length, watch = S.risks.filter((x) => x.status === 'Watching').length;
+    if (trig) out.push(['fix', trig + ' risk' + (trig > 1 ? 's' : '') + ' triggered: run the contingency on the Risks tab']);
+    if (watch) out.push(['watch', watch + ' risk' + (watch > 1 ? 's' : '') + ' with early warning signals moving']);
     const rank = { fix: 0, watch: 1, ok: 2 };
     return out.sort((a, b) => rank[a[0]] - rank[b[0]]);
   }
