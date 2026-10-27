@@ -311,3 +311,9 @@ ul.plain{list-style:none;padding-left:0}
   .box,.tile{break-inside:avoid}
 }
 .rbody .basis{background:var(--sunk);border-radius:8px;padding:8px 12px}.rbody .basis p{margin:0;font-size:13px}
+.pill.ok{background:var(--good-soft);color:var(--good)}
+.review{border-top:1px dashed var(--line);padding-top:10px;display:flex;flex-direction:column;gap:8px}
+.review .rv-btns{display:flex;flex-wrap:wrap;gap:8px}
+.review p{margin:0}
+.spot{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.review>.btn{align-self:flex-start}

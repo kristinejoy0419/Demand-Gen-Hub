@@ -8,6 +8,8 @@
   const STAGES = ['Aware', 'Consider', 'Decide'], ASSET_STATUS = ['Live', 'In production', 'Missing'], LOC_STATUS = ['Not needed', 'Requested', 'In progress', 'Ready'];
   let comRegion = 'All regions';
   const RISK_STATUS = ['On track', 'Watching', 'Triggered'];
+  const PLAN_STATUS = ['Not started', 'Draft', 'Submitted', 'Changes requested', 'Approved'];
+  const isIn = (st) => st === 'Submitted' || st === 'Approved';
   const RISK_LINKS = ['Owner sets it', 'Regional coverage', 'SDR capacity', 'MQL → SQO', 'Pacing'];
   const FUNCTIONS = ['Demand gen', 'PMM', 'Field', 'Partner', 'Paid (shared svc)', 'Creative', 'RevOps', 'Sales / SDR'];
 
@@ -500,6 +502,7 @@
       pl.programs = rowsToPrograms(rows, region);
       pl.file = file.name; pl.uploaded = new Date().toISOString().slice(0, 10); pl.ai = '';
       if (pl.status === 'Not started') pl.status = 'Draft';
+      if (pl.status === 'Approved') { pl.status = 'Submitted'; pl.review = { st: 'Submitted', note: 'New file after approval: ' + file.name, date: new Date().toISOString().slice(0, 10) }; }
       tab = 'regions'; renderTabs(); changed(true);
       toast(pl.programs.length + ' programs read from ' + file.name);
       const el = document.getElementById('rg-' + slug(region)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -559,13 +562,23 @@
     return '<div class="digest"><div class="dhead"><b>Digest</b>' + (r.plan.file ? '<span class="note">from ' + esc(r.plan.file) + (r.plan.uploaded ? ' · ' + esc(r.plan.uploaded) : '') + '</span>' : '') + '</div>' +
       '<p class="note">' + d.head + '</p><div class="health">' + d.items.map(([k, t]) => '<span class="hp ' + k + '">' + lab[k] + '</span><span>' + t + '</span>').join('') + '</div>' + ai + btn + '</div>';
   }
+  // HQ sign-off on a region's plan
+  function reviewBox(r) {
+    const st = r.status, rv = r.plan.review, n = esc(r.name), gap = r.gap > 0.5 ? ' with a ' + fmtInt(r.gap) + ' MQL gap' : '';
+    const last = rv && rv.note ? '<p class="note">' + (rv.st === 'Changes requested' ? 'Sent back' : rv.st === 'Approved' ? 'Approved' : 'Note') + (rv.date ? ' ' + esc(rv.date) : '') + ': ' + esc(rv.note) + '</p>' : rv && rv.st === 'Approved' ? '<p class="note">Approved ' + esc(rv.date || '') + '</p>' : '';
+    if (st === 'Approved') return '<div class="review ok">' + last + '<button class="btn" type="button" data-rv="reopen" data-region="' + n + '">Reopen</button></div>';
+    if (st === 'Not started') return '<div class="review">' + last + '<p class="note">Nothing to review until ' + n + ' uploads a plan.</p></div>';
+    return '<div class="review">' + last + '<label class="f">Note to ' + n + ' (optional)<input type="text" class="rv-note" placeholder="' + (gap ? 'e.g. close the gap with a second roadshow leg' : 'e.g. looks good') + '"></label>' +
+      '<div class="rv-btns"><button class="btn primary" type="button" data-rv="approve" data-region="' + n + '">Approve' + gap + '</button><button class="btn" type="button" data-rv="back" data-region="' + n + '">Send back</button></div>' +
+      (st === 'Draft' ? '<p class="note">' + n + ' still has this as a draft.</p>' : '') + '</div>';
+  }
   function hqDigest(P) {
     const all = P.regions.map((r) => ({ r, d: digest(r, P) }));
     const fixes = all.flatMap(({ r, d }) => d.items.filter((i) => i[0] === 'fix').map((i) => '<b>' + esc(r.name) + ':</b> ' + i[1]));
     const watches = all.reduce((a, { d }) => a + d.items.filter((i) => i[0] === 'watch').length, 0);
-    const sub = P.regions.filter((r) => r.status === 'Submitted').length;
+    const sub = P.regions.filter((r) => isIn(r.status)).length, appr = P.regions.filter((r) => r.status === 'Approved').length;
     const worst = P.regions.slice().sort((a, b) => b.gap - a.gap)[0];
-    return '<div class="box hqd"><h3>Regional digest</h3><p>' + sub + ' of ' + P.regions.length + ' regions submitted. Regional programs cover ' + coverCell(P.roll.coverage) + ' of what regions owe, leaving ' + fmtInt(P.roll.gap) + ' MQLs (' + money(P.roll.gap * (P.tot.mql ? P.tot.pipe / P.tot.mql : 0)) + ' pipeline) uncovered' +
+    return '<div class="box hqd"><h3>Regional digest</h3><p>' + sub + ' of ' + P.regions.length + ' regions submitted, ' + appr + ' approved. Regional programs cover ' + coverCell(P.roll.coverage) + ' of what regions owe, leaving ' + fmtInt(P.roll.gap) + ' MQLs (' + money(P.roll.gap * (P.tot.mql ? P.tot.pipe / P.tot.mql : 0)) + ' pipeline) uncovered' +
       (worst && worst.gap > 0.5 ? '. The biggest gap is ' + esc(worst.name) + ' at ' + fmtInt(worst.gap) + ' MQLs' : '') + '. ' + watches + ' smaller item' + (watches === 1 ? '' : 's') + ' to watch are in each region below.</p>' +
       (fixes.length ? '<b>Act on first</b><ul>' + fixes.slice(0, 4).map((f) => '<li>' + f + '</li>').join('') + '</ul>' : '<p class="note">Nothing to fix.</p>') + '</div>';
   }
@@ -604,7 +617,7 @@
     if (at < 0 || !d || !d.region) return toast('That doesn\'t look like a regional plan');
     if (!S.regions.some((r) => r.name === d.region)) return toast('No region called ' + d.region + ' in this plan');
     S.regionPlans[d.region] = {
-      status: ['Not started', 'Draft', 'Submitted'].includes(d.status) ? d.status : 'Draft',
+      status: PLAN_STATUS.includes(d.status) ? d.status : 'Draft',
       adapt: String(d.adapt || ''),
       programs: (Array.isArray(d.programs) ? d.programs : []).map((x) => ({ name: String(x.name || ''), month: num(x.month), budget: num(x.budget), mql: num(x.mql) }))
     };
@@ -623,7 +636,7 @@
 
   /* ---------- tabs ---------- */
   const TAB_GROUPS = [
-    ['Overview', [['onepage', 'Plan on a page'], ['summary', 'Summary'], ['pacing', 'Pacing']]],
+    ['Overview', [['onepage', 'Plan on a page'], ['summary', 'Summary'], ['pacing', 'Pacing'], ['checks', 'Check the math']]],
     ['Plan', [['campaigns', 'Campaigns'], ['quarters', 'Quarterly plan'], ['funnel', 'Funnel & motion'], ['channels', 'Channel mix'], ['calendar', 'Calendar']]],
     ['Regions & accounts', [['regions', 'Regional plans'], ['committee', 'Buying committee & ABM']]],
     ['Execution', [['owners', 'Team & owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['scenarios', 'Scenarios & asks'], ['risks', 'Risks']]]
@@ -712,7 +725,7 @@
           '<div><b>HQ delivers</b> ' + fmtInt(r.fromHq) + ' MQLs from global programs</div>' +
           '<div><b>Region owes</b> ' + fmtInt(r.owes) + ' MQLs from its own programs</div>' + list +
           (r.plan.adapt ? '<div><b>Adapting locally</b> ' + esc(r.plan.adapt) + '</div>' : '') +
-          '<div class="' + (r.gap > 0.5 ? 'gap' : 'ok') + '">' + (r.gap > 0.5 ? 'Gap: ' + fmtInt(r.gap) + ' MQLs' : 'Covered') + ' · ' + coverCell(r.coverage) + ' coverage</div></div>' + digestBox(r, P) + '</div>';
+          '<div class="' + (r.gap > 0.5 ? 'gap' : 'ok') + '">' + (r.gap > 0.5 ? 'Gap: ' + fmtInt(r.gap) + ' MQLs' : 'Covered') + ' · ' + coverCell(r.coverage) + ' coverage</div>' + reviewBox(r) + '</div>' + digestBox(r, P) + '</div>';
       }).join('');
       const regNames = P.regions.map((r) => r.name);
       const upChips = P.regions.map((r) => '<span class="upchip' + (r.plan.file || (r.plan.programs || []).length ? ' done' : '') + '">' + esc(r.name) + ' · ' + (r.plan.file ? esc(r.plan.file) : (r.plan.programs || []).length ? (r.plan.programs.length + ' program' + (r.plan.programs.length === 1 ? '' : 's') + ' entered') : 'no plan yet') + '</span>').join('');
@@ -723,7 +736,7 @@
         '<div class="upchips">' + upChips + '</div></div>';
       return '<div><h2>Regional plans</h2><p class="lead">HQ owns the strategy, message, platforms and measurement. Each region owns its slice of the number and uploads its plan below. Each upload gets a digest that checks it against the global plan. Tap a region to see how its numbers are built.</p></div>' + upload +
         '<div class="out"><table class="t" data-export><thead><tr><th>Region</th><th>Status</th><th class="n">Pipeline</th><th class="n">MQL target</th><th class="n">From HQ programs</th><th class="n">Region owes</th><th class="n">Committed</th><th class="n">Regional budget</th><th class="n">Coverage</th><th class="n">Gap</th></tr></thead><tbody>' + rows +
-        '</tbody><tfoot><tr><td>Total</td><td>' + P.regions.filter((r) => r.status === 'Submitted').length + ' of ' + P.regions.length + ' submitted</td><td class="n">' + money(P.tot.pipe) + '</td><td class="n">' + fmtInt(R.mql) + '</td><td class="n">' + fmtInt(R.fromHq) + '</td><td class="n">' + fmtInt(R.owes) + '</td><td class="n">' + fmtInt(R.committed) + '</td><td class="n">' + money(R.spend) + '</td><td class="n">' + coverCell(R.coverage) + '</td><td class="n">' + fmtInt(R.gap) + '</td></tr></tfoot></table></div>' +
+        '</tbody><tfoot><tr><td>Total</td><td>' + P.regions.filter((r) => isIn(r.status)).length + ' of ' + P.regions.length + ' in · ' + P.regions.filter((r) => r.status === 'Approved').length + ' approved</td><td class="n">' + money(P.tot.pipe) + '</td><td class="n">' + fmtInt(R.mql) + '</td><td class="n">' + fmtInt(R.fromHq) + '</td><td class="n">' + fmtInt(R.owes) + '</td><td class="n">' + fmtInt(R.committed) + '</td><td class="n">' + money(R.spend) + '</td><td class="n">' + coverCell(R.coverage) + '</td><td class="n">' + fmtInt(R.gap) + '</td></tr></tfoot></table></div>' +
         '<p class="note">HQ programs: ' + hq + '. Region-run programs: ' + own + '. Change who runs a program in Channels &amp; programs.</p>' +
         hqDigest(P) + '<div class="regions">' + sections + '</div>' +
         '<div class="box"><h3>Keep consistent vs adapt</h3><div class="split"><div><b>Keep consistent</b><ul><li>Positioning and campaign theme</li><li>Target account criteria and ABM tiers</li><li>Brand and creative system</li><li>Funnel definitions and attribution</li></ul></div><div><b>Adapt by region</b><ul><li>Language and local proof points</li><li>Channel mix and offers</li><li>Timing around local seasons and holidays</li><li>Compliance, such as GDPR in EMEA</li></ul></div></div></div>';
@@ -1101,6 +1114,56 @@
   }
 
   const VIEWS2 = {
+    checks(P) {
+      const tol = (a, b) => Math.abs(a - b) <= Math.max(1, Math.abs(b) * 0.005);
+      const sumIn = (rows, k) => rows.reduce((a, r) => a + Math.max(0, num(r[k])), 0);
+      const sum = (arr, f) => arr.reduce((a, x) => a + f(x), 0);
+      const ties = [], inputs = [];
+      const tie = (what, a, b, fmt, how) => ties.push([what, fmt(a), fmt(b), tol(a, b), how]);
+      // 1. do the outputs tie back to the inputs and to each other
+      tie('Pipeline goal → funnel pipeline', num(S.goal), P.tot.pipe, money, 'The goal you typed should equal the sum of segment pipeline.');
+      tie('Segments: SQOs × deal size', sum(P.segs, (x) => x.sqo * x.acv), P.tot.pipe, money, 'Each segment\'s SQOs times its deal size, added up.');
+      tie('Segments: MQLs × MQL → SQO rate', sum(S.segments.map((x, i) => [x, P.segs[i]]), ([x, g]) => g.mql * num(x.mqlSqo) / 100), P.tot.sqo, fmtInt, 'Each segment\'s MQLs times its conversion rate, added up.');
+      tie('Regions add up to total MQLs', sum(P.regions, (r) => r.mql), P.tot.mql, fmtInt, 'Region MQL targets on the Regional plans tab.');
+      P.regions.forEach((r) => tie(r.name + ': HQ delivers + region owes', r.fromHq + r.owes, r.mql, fmtInt, 'What HQ programs deliver plus what the region owes should equal its target.'));
+      tie('Regions: committed = sum of their programs', sum(P.regions, (r) => r.committed), sum(P.regions, (r) => sum(r.plan.programs || [], (x) => Math.max(0, num(x.mql)))), fmtInt, 'Committed MQLs should match the uploaded program rows.');
+      tie('Channels add up to total MQLs', sum(P.channels, (c) => c.mql), P.tot.mql, fmtInt, 'Channel mix tab.');
+      tie('Channel budgets add up to program budget', sum(P.channels, (c) => c.cost), P.budget, money, 'Each channel is its MQLs × cost per MQL.');
+      tie('Months add up to total MQLs', sum(P.monthly, (x) => x), P.tot.mql, fmtInt, 'Calendar and pacing use these monthly numbers.');
+      tie('Monthly spend adds up to budget', sum(P.monthlyCost, (x) => x), P.budget, money, 'Budget phasing by month.');
+      tie('Quarters add up to total pipeline', sum(P.quarters, (q) => q.pipe), P.tot.pipe, money, 'Quarterly plan tab.');
+      tie('Campaigns add up to total pipeline', sum(P.camps, (c) => c.pipe), P.camps.length ? P.tot.pipe : 0, money, 'Campaigns tab. Shares are rebalanced to 100% if they don\'t add up.');
+      tie('Products add up to total pipeline', sum(P.products, (x) => x.pipe), P.tot.pipe, money, 'Product mix.');
+      // 2. inputs worth a second look
+      const shares = [['Segment shares', S.segments, 'share'], ['Region shares', S.regions, 'share'], ['Channel shares (on)', S.channels.filter((c) => c.on), 'share'], ['Campaign shares', S.campaigns, 'share'], ['Product shares', S.products, 'share'], ['ABM tier shares', S.tiers, 'share']];
+      shares.forEach(([l, rows, k]) => { if (!rows.length) return; const t = sumIn(rows, k); inputs.push([Math.round(t) === 100 ? 'ok' : 'watch', l + ' add to ' + fmtInt(t) + '%' + (Math.round(t) === 100 ? '' : '. The dashboard rescales them to 100%, so every number built on them moves. Fix the inputs so what you typed is what you see.')]); });
+      const r1 = num(S.r1), r3 = num(S.r3);
+      if (r1 <= 0 || r1 > 100) inputs.push(['fix', 'Lead → MQL rate is ' + r1 + '%. It should be between 1 and 100.']);
+      if (r3 <= 0 || r3 > 100) inputs.push(['fix', 'SQO → won rate is ' + r3 + '%. It should be between 1 and 100.']);
+      S.segments.forEach((x) => { if (!(num(x.acv) > 0)) inputs.push(['fix', esc(x.name || 'A segment') + ' has no deal size, so its SQOs can\'t be worked out.']); const m = num(x.mqlSqo); if (m <= 0 || m > 60) inputs.push(['watch', esc(x.name || 'A segment') + ' MQL → SQO is ' + m + '%. Most B2B plans sit between 10% and 35%.']); });
+      const cpms = S.channels.filter((c) => c.on).map((c) => num(c.cpm)).filter((x) => x > 0).sort((a, b) => a - b), med = cpms.length ? cpms[Math.floor(cpms.length / 2)] : 0;
+      S.channels.filter((c) => c.on).forEach((c) => { const v = num(c.cpm); if (!(v > 0)) inputs.push(['watch', esc(c.name) + ' has no cost per MQL, so it counts as free in the budget.']); else if (med && v > med * 5) inputs.push(['watch', esc(c.name) + ' costs ' + money(v) + ' per MQL, more than 5× the typical ' + money(med) + '. Check it isn\'t a typo.']); });
+      P.regions.forEach((r) => (r.plan.programs || []).forEach((x) => {
+        const m = Math.round(num(x.month));
+        if (m < 1 || m > 12) inputs.push(['fix', esc(r.name) + ': "' + esc(x.name) + '" has month ' + esc(String(x.month)) + '. Months run 1 to 12.']);
+        if (num(x.mql) > 0 && !(num(x.budget) > 0)) inputs.push(['watch', esc(r.name) + ': "' + esc(x.name) + '" has MQLs but no budget.']);
+        if (num(x.budget) > 0 && num(x.mql) > 0 && num(x.budget) / num(x.mql) > cpms[cpms.length - 1] * 3 && cpms.length) inputs.push(['watch', esc(r.name) + ': "' + esc(x.name) + '" works out to ' + money(num(x.budget) / num(x.mql)) + ' per MQL. Check the budget or MQL column.']);
+      }));
+      S.actuals.forEach((a) => { if (num(a.sqo) > num(a.mql) && num(a.mql)) inputs.push(['fix', 'Actuals for ' + (P.labels[Math.round(num(a.month)) - 1] || 'a month') + ' show more SQOs than MQLs.']); });
+      const okIn = inputs.filter((x) => x[0] !== 'ok').length;
+      const okTies = ties.filter((t) => t[3]).length;
+      const rows = ties.map(([w, a, b, ok, how]) => '<tr><td>' + esc(w) + '<div class="note">' + how + '</div></td><td class="n">' + a + '</td><td class="n">' + b + '</td><td>' + hp(ok ? 'ok' : 'fix', ok ? 'Ties' : 'Off') + '</td></tr>').join('');
+      return '<div><h2>Check the math</h2><p class="lead">Every number on the dashboard is built from the inputs in the left pane. This tab re-adds the totals a second way to prove they tie out, and flags inputs that look wrong. Tap any row label elsewhere in the hub to see how that number is built.</p></div>' +
+        '<div class="tiles"><div class="tile' + (okTies < ties.length ? ' alert' : '') + '"><span>Totals that tie out</span><b>' + okTies + ' of ' + ties.length + '</b><span>within 0.5% rounding</span></div>' +
+        '<div class="tile' + (okIn ? ' alert' : '') + '"><span>Inputs to check</span><b>' + okIn + '</b><span>' + (okIn ? 'listed below' : 'none flagged') + '</span></div></div>' +
+        '<h3>Inputs to check</h3><div class="health">' + (inputs.length ? inputs.sort((a, b) => (a[0] === 'ok') - (b[0] === 'ok')).map(([k, t]) => hp(k, k === 'fix' ? 'Fix' : k === 'watch' ? 'Check' : 'OK') + '<span>' + t + '</span>').join('') : hp('ok', 'OK') + '<span>Nothing looks off.</span>') + '</div>' +
+        '<h3>Do the totals tie out?</h3><div class="out"><table class="t" data-export><thead><tr><th>Check</th><th class="n">Added up this way</th><th class="n">Dashboard shows</th><th>Result</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '<div class="box"><h3>Spot-check it by hand in two minutes</h3><ol class="spot">' +
+        '<li><b>Work the funnel backwards.</b> ' + money(P.tot.pipe) + ' goal ÷ blended deal size ' + money(P.tot.sqo ? P.tot.pipe / P.tot.sqo : 0) + ' = ' + fmtInt(P.tot.sqo) + ' SQOs. ÷ ' + pct(P.tot.mql ? P.tot.sqo / P.tot.mql * 100 : 0) + ' MQL → SQO = ' + fmtInt(P.tot.mql) + ' MQLs. Check these against the Summary tab.</li>' +
+        '<li><b>Pick one channel.</b> ' + (P.channels[0] ? esc(P.channels[0].name) + ': ' + fmtInt(P.channels[0].mql) + ' MQLs × ' + money(num(P.channels[0].cpm)) + ' per MQL = ' + money(P.channels[0].cost) + '. Find it on Channel mix.' : 'Add a channel first.') + '</li>' +
+        '<li><b>Pick one region.</b> ' + (P.regions[0] ? esc(P.regions[0].name) + ': ' + pct(P.regions[0].w * 100) + ' of ' + fmtInt(P.tot.mql) + ' MQLs = ' + fmtInt(P.regions[0].mql) + '. Open its row on Regional plans to see the same split.' : 'Add a region first.') + '</li>' +
+        '<li><b>Export and re-add.</b> Use Export this tab → Excel on any tab and sum a column. It should match the total row.</li></ol></div>';
+    },
     onepage(P) {
       const t = P.tot, B = P.base, pc = P.pace, [pk, pl] = paceStatus(pc.pace);
       const camps = P.camps.map((c) => '<tr><td><b>' + esc(c.name) + '</b><div class="note">' + esc(c.offer) + '</div></td><td>' + esc(c.tier) + '</td><td>' + (P.labels[Math.round(num(c.launch)) - 1] || '–') + '</td><td class="n">' + money(c.pipe) + '</td><td class="n">' + money(c.cost) + '</td></tr>').join('');
@@ -1205,7 +1268,7 @@
       '</tbody></table></div><div class="health">' + flags.map(([k, s]) => hp(k, k === 'fix' ? 'Fix' : k === 'watch' ? 'Watch' : 'OK') + '<span>' + s + '</span>').join('') + '</div></div>';
   }
 
-  function statusPill(st) { return '<span class="pill ' + (st === 'Submitted' ? 'on' : st === 'Draft' ? 'both' : 'burst') + '">' + esc(st) + '</span>'; }
+  function statusPill(st) { return '<span class="pill ' + (st === 'Approved' ? 'ok' : st === 'Submitted' ? 'on' : st === 'Draft' ? 'both' : 'burst') + '">' + esc(st) + '</span>'; }
   // tappable row label and the hidden row that shows how the numbers are built
   function dl(label) { return '<button class="dl" type="button" aria-expanded="false">' + label + '</button>'; }
   function why(cols, lines, foot) {
@@ -1226,9 +1289,9 @@
     if (P.sdrCap <= 0) out.push(['watch', 'Set SDR headcount to check follow-up capacity']);
     else if (over.length) out.push(['fix', 'SDR capacity is over in ' + over.map(([, i]) => P.labels[i]).join(', ') + ' (' + fmtInt(Math.max(...over.map(([v]) => v))) + ' MQLs vs ' + fmtInt(P.sdrCap) + ' a month)']);
     else out.push(['ok', 'SDRs can work every month\'s MQLs (' + fmtInt(P.sdrCap) + ' a month)']);
-    const sub = P.regions.filter((r) => r.status === 'Submitted').length;
+    const sub = P.regions.filter((r) => isIn(r.status)).length, appr = P.regions.filter((r) => r.status === 'Approved').length;
     const cov = P.roll.coverage;
-    out.push([sub === P.regions.length && cov >= 0.95 ? 'ok' : 'fix', sub + ' of ' + P.regions.length + ' regions submitted · regional coverage ' + coverCell(cov)]);
+    out.push([sub === P.regions.length && cov >= 0.95 ? 'ok' : 'fix', sub + ' of ' + P.regions.length + ' regions submitted (' + appr + ' approved) · regional coverage ' + coverCell(cov)]);
     const lateFrom = Math.max(1, 12 - Math.round(num(S.cycle) / 30));
     if (lateFrom < 12) out.push(['watch', 'Pipeline sourced after month ' + lateFrom + ' (' + P.labels[lateFrom - 1] + ') mostly closes next fiscal year']);
     const paid = P.channels.filter((c) => c.owner === 'Paid (shared svc)').reduce((s, c) => s + c.w, 0);
@@ -1448,6 +1511,15 @@
       if (e.target.id === 'rg-up-file') { const f = e.target.files[0]; e.target.value = ''; uploadPlan(f); }
     });
     $('panel').addEventListener('click', (e) => { if (e.target.id === 'rg-up-template') $('btn-rp-template').click(); });
+    $('panel').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-rv]'); if (!b) return;
+      const name = b.dataset.region, pl = regionPlan(name), box = b.closest('.review'), note = box && box.querySelector('.rv-note') ? box.querySelector('.rv-note').value.trim() : '';
+      const date = new Date().toISOString().slice(0, 10);
+      if (b.dataset.rv === 'back' && !note) { toast('Add a note so ' + name + ' knows what to change'); box.querySelector('.rv-note').focus(); return; }
+      const st = b.dataset.rv === 'approve' ? 'Approved' : b.dataset.rv === 'back' ? 'Changes requested' : 'Submitted';
+      pl.status = st; pl.review = { st, note: b.dataset.rv === 'reopen' ? 'Reopened by HQ' : note, date };
+      changed(true); toast(name + ': ' + (st === 'Approved' ? 'approved' : st === 'Changes requested' ? 'sent back with your note' : 'reopened'));
+    });
     $('btn-rp-template').onclick = () => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([templateCsv()], { type: 'text/csv' }));
