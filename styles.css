@@ -329,3 +329,12 @@ details.card.upd{border:1px solid var(--accent);background:var(--surface);margin
 details.card.upd>summary{background:var(--accent-soft);border-radius:var(--r)}
 details.card.upd[open]>summary{border-radius:var(--r) var(--r) 0 0}
 .updtag{display:inline-block;font-family:var(--f-body);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:2px 8px;margin-right:8px;vertical-align:2px}
+.feeds{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--sunk);font-size:12px}
+.feedlab,.feedsep{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.feedsep{margin-left:8px}
+.feed{font:inherit;font-size:12px;font-weight:600;background:var(--surface);color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:3px 10px;cursor:pointer}
+.feed:hover{border-color:var(--accent)}
+.feed.wk{cursor:default;color:var(--ink)}
+details.card.flash{animation:flash 1.6s ease-out}
+@keyframes flash{0%,30%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+@media print{.feeds{display:none}}

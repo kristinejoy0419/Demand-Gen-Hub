@@ -40,12 +40,12 @@ Set once when you build the plan, grouped as Strategy, Targets, Audience, Progra
 | Overview | Plan on a page | Pipeline vs last year, coverage of the sales need, budget, pacing, campaigns, what needs attention, pipeline by quarter, asks, budget scenarios and risks. Prints to one PDF |
 | | Summary | Headline numbers, plan health, product mix, last year and coverage checks, the reverse funnel and MQLs by month |
 | Execution | Pacing | Plan vs actual by month, a run-rate forecast and what to do about a gap |
-| Plan | Campaigns | One card per campaign with theme, hero offer, audience, programs, a 12-month timeline and milestones worked back from launch |
+| HQ strategy | Campaigns | One card per campaign with theme, hero offer, audience, programs, a 12-month timeline and milestones worked back from launch |
 | | Quarterly plan | MQLs, SQOs, pipeline and budget by quarter, by region and by segment |
 | | Funnel & motion | The funnel by segment, new logo vs expansion with PQL supply, and sourced vs influenced |
 | | Channel mix | Each program's share, pipeline, MQLs, SQOs, budget and pipeline to spend |
 | | Calendar | MQLs by program and month |
-| Regions & accounts | Regional plans | The regional roll-up, a regional digest of what to act on first, and a section and digest per region, with an optional Claude-written read |
+| Regions | Regional plans | The regional roll-up, a regional digest of what to act on first, and a section and digest per region, with an optional Claude-written read |
 | | Buying committee & ABM | Asset status, an offer matrix by role and stage, a to-do list, and ABM by region, with a region picker |
 | Execution | Team & owners | Team load against capacity, SLAs and escalation paths, and a RACI |
 | | Paid brief | A copy-ready brief for the paid media shared service |

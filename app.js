@@ -637,8 +637,8 @@
   /* ---------- tabs ---------- */
   const TAB_GROUPS = [
     ['Overview', [['onepage', 'Plan on a page'], ['summary', 'Summary'], ['checks', 'Check the math']]],
-    ['Plan', [['campaigns', 'Campaigns'], ['quarters', 'Quarterly plan'], ['funnel', 'Funnel & motion'], ['channels', 'Channel mix'], ['calendar', 'Calendar']]],
-    ['Regions & accounts', [['regions', 'Regional plans'], ['committee', 'Buying committee & ABM']]],
+    ['HQ strategy', [['campaigns', 'Campaigns'], ['quarters', 'Quarterly plan'], ['funnel', 'Funnel & motion'], ['channels', 'Channel mix'], ['calendar', 'Calendar']]],
+    ['Regions', [['regions', 'Regional plans'], ['committee', 'Buying committee & ABM']]],
     ['Execution', [['pacing', 'Pacing'], ['owners', 'Team & owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['scenarios', 'Scenarios & asks'], ['risks', 'Risks']]]
   ];
   const TABS = TAB_GROUPS.flatMap((g) => g[1]);
@@ -662,13 +662,40 @@
 
   // weekly update cards live in the Execution tabs they drive; they move in and out of the panel so edits keep focus
   const UPD = { pacing: 'actuals', risks: 'risks', owners: 'team', scenarios: 'asks' };
+  // which planning assumptions each tab is built from, so it is clear what to fill in
+  const FEEDS = {
+    onepage: ['campaign-and-brief', 'pipeline-goal-and-funnel', 'targets-and-baseline', 'campaigns', 'channels-and-programs'],
+    summary: ['pipeline-goal-and-funnel', 'segments', 'channels-and-programs'],
+    checks: ['pipeline-goal-and-funnel', 'segments', 'regions', 'channels-and-programs', 'campaigns', 'product-mix'],
+    campaigns: ['campaigns', 'channels-and-programs', 'offers-and-assets', 'buying-committee'],
+    quarters: ['pipeline-goal-and-funnel', 'channels-and-programs', 'launch-moments'],
+    funnel: ['pipeline-goal-and-funnel', 'segments', 'targets-and-baseline'],
+    channels: ['channels-and-programs', 'pipeline-goal-and-funnel'],
+    calendar: ['channels-and-programs', 'launch-moments', 'campaigns'],
+    regions: ['regions', 'regional-plans', 'channels-and-programs'],
+    committee: ['buying-committee', 'offers-and-assets', 'abm-tiers', 'abm-by-region', 'regions'],
+    pacing: ['pipeline-goal-and-funnel'],
+    owners: ['channels-and-programs', 'campaigns', 'offers-and-assets'],
+    paid: ['channels-and-programs', 'campaign-and-brief', 'segments'],
+    measure: ['channels-and-programs', 'pipeline-goal-and-funnel'],
+    scenarios: ['channels-and-programs', 'pipeline-goal-and-funnel'],
+    risks: ['regions', 'regional-plans', 'pipeline-goal-and-funnel']
+  };
+  const UPD_LABEL = { actuals: 'Actuals', risks: 'Risks & contingencies', team: 'Team & SLAs', asks: 'Asks of leadership' };
+  function feedsStrip() {
+    const cards = (FEEDS[tab] || []).map((k) => { const c = document.querySelector('.rail [data-card="' + k + '"] h3'); return c ? '<button type="button" class="feed" data-open-card="' + k + '">' + esc(c.textContent) + '</button>' : ''; }).join('');
+    const wk = UPD[tab] ? '<span class="feedsep">Weekly update</span><span class="feed wk">' + UPD_LABEL[UPD[tab]] + ' · below</span>' : '';
+    return '<div class="feeds"><span class="feedlab">Built from</span>' + cards + wk + '</div>';
+  }
   function render() {
     const P = extend(compute());
     const a = document.activeElement, sel = a && 'selectionStart' in a ? [a.selectionStart, a.selectionEnd] : null;
     document.querySelectorAll('#panel .card.upd').forEach((c) => $('upd-holder').appendChild(c));
     $('panel').innerHTML = (VIEWS[tab] || VIEWS2[tab])(P);
+    const head = $('panel').firstElementChild;
+    if (head) head.insertAdjacentHTML('afterend', feedsStrip()); else $('panel').insertAdjacentHTML('afterbegin', feedsStrip());
     if (UPD[tab]) {
-      const card = $('upd-' + UPD[tab]), first = $('panel').firstElementChild;
+      const card = $('upd-' + UPD[tab]), first = $('panel').querySelector('.feeds');
       if (first) first.after(card); else $('panel').prepend(card);
       if (a && card.contains(a) && document.activeElement !== a) { a.focus({ preventScroll: true }); if (sel) try { a.setSelectionRange(sel[0], sel[1]); } catch (e) { /* not a text field */ } }
     }
@@ -1578,6 +1605,13 @@
     $('cheer-t').textContent = CHEERS[cheerI];
     $('cheer-new').onclick = newCheer; $('spider').onclick = newCheer;
     document.addEventListener('click', (e) => { const b = e.target.closest('[data-goexec]'); if (!b) return; tab = b.dataset.goexec; renderTabs(); render(); if (window.innerWidth < 900 && $('btn-close-rail')) $('btn-close-rail').click(); $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    $('panel').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-open-card]'); if (!b) return;
+      const card = document.querySelector('.rail [data-card="' + b.dataset.openCard + '"]'); if (!card) return;
+      if (getComputedStyle($('btn-open-rail')).display !== 'none') $('btn-open-rail').click();
+      card.open = true; card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
+    });
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-print') window.print(); });
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-brief') copyText($('brief-text').innerText, 'Brief copied'); });
     const rail = $('rail'), scrim = $('scrim');

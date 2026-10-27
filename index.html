@@ -31,7 +31,7 @@
       <div class="rail-head"><h3>Planning assumptions</h3><button class="btn" type="button" id="btn-close-rail">Done</button></div>
       <div class="rail-intro"><b>Planning assumptions</b><span>Set these once when you build the plan: the goal, funnel, audience, programs and regions. Every number in the hub is built from them.</span></div>
       <div class="rail-group">Strategy</div>
-      <details class="card" open>
+      <details class="card" data-card="campaign-and-brief" open>
         <summary><h3>Campaign &amp; brief</h3><small>what we're launching</small></summary>
         <div class="body">
           <div class="row">
@@ -43,18 +43,18 @@
         </div>
       </details>
 
-      <details class="card">
+      <details class="card" data-card="campaigns">
         <summary><h3>Campaigns</h3><small>theme · offer · launch · milestones</small></summary>
         <div class="body"><div id="ed-campaigns"></div><p class="hint">Months are plan months (1 = plan start). Programs: list channels by name or id, such as webinar, paid, events. Milestones are worked back from the launch month.</p></div>
       </details>
 
-      <details class="card">
+      <details class="card" data-card="product-mix">
         <summary><h3>Product mix</h3><small>share of pipeline by product</small></summary>
         <div class="body"><div id="ed-products"></div><p class="hint">Launch month is the plan month a new product goes live. Use 0 for products already in market.</p></div>
       </details>
 
       <div class="rail-group">Targets</div>
-      <details class="card" open>
+      <details class="card" data-card="pipeline-goal-and-funnel" open>
         <summary><h3>Pipeline goal &amp; funnel</h3><small>work back from the number</small></summary>
         <div class="body">
           <div class="row">
@@ -74,7 +74,7 @@
         </div>
       </details>
 
-      <details class="card">
+      <details class="card" data-card="targets-and-baseline">
         <summary><h3>Targets &amp; baseline</h3><small>sales need · last year · motion</small></summary>
         <div class="body">
           <div class="row">
@@ -98,50 +98,50 @@
         </div>
       </details>
 
-      <details class="card">
+      <details class="card" data-card="segments">
         <summary><h3>Segments</h3><small>share · deal size · conversion</small></summary>
         <div class="body"><div id="ed-segments"></div></div>
       </details>
 
-      <details class="card">
+      <details class="card" data-card="regions">
         <summary><h3>Regions</h3><small>share of the global number</small></summary>
         <div class="body"><div id="ed-regions"></div><p class="hint">Shares are rebalanced to 100% in the plan.</p></div>
       </details>
 
       <div class="rail-group">Audience</div>
-      <details class="card">
+      <details class="card" data-card="buying-committee">
         <summary><h3>Buying committee</h3><small>role · what they care about</small></summary>
         <div class="body"><div id="ed-personas"></div></div>
       </details>
 
-      <details class="card">
+      <details class="card" data-card="offers-and-assets">
         <summary><h3>Offers &amp; assets</h3><small>status · owner · localization</small></summary>
         <div class="body"><div id="ed-assets"></div><p class="hint">One row per asset. Due month is the plan month it has to be live. List the regions that need it localized, separated by commas.</p></div>
       </details>
 
-      <details class="card">
+      <details class="card" data-card="abm-tiers">
         <summary><h3>ABM tiers</h3><small>accounts · play</small></summary>
         <div class="body"><div id="ed-tiers"></div></div>
       </details>
 
-      <details class="card">
+      <details class="card" data-card="abm-by-region">
         <summary><h3>ABM by region</h3><small>accounts · owner · next play</small></summary>
         <div class="body"><div id="ed-abm"></div><p class="hint">Each region's share of the tier accounts, who owns them, and the next play.</p></div>
       </details>
 
       <div class="rail-group">Programs</div>
-      <details class="card">
+      <details class="card" data-card="channels-and-programs">
         <summary><h3>Channels &amp; programs</h3><small>owner · motion · share</small></summary>
         <div class="body"><div id="ed-channels"></div><p class="hint">Share is each program's slice of sourced pipeline. Enabled programs are rebalanced to 100%. Cost per MQL drives the program budget.</p></div>
       </details>
 
-      <details class="card">
+      <details class="card" data-card="launch-moments">
         <summary><h3>Launch moments</h3><small>drive the bursts</small></summary>
         <div class="body"><div id="ed-moments"></div><p class="hint">Month 1 is the plan start. Launches lift that month and the next; events and buying seasons lift their own month.</p></div>
       </details>
 
       <div class="rail-group">Regions</div>
-      <details class="card" open>
+      <details class="card" data-card="regional-plans" open>
         <summary><h3>Regional plans</h3><small>each regional lead fills in theirs</small></summary>
         <div class="body">
           <div class="row">
