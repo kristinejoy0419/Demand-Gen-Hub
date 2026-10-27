@@ -462,6 +462,11 @@
     $('btn-reset').onclick = () => { S = example(); save(); bindInputs(); $('example-pill').hidden = false; render(); toast('Example reloaded'); };
     $('btn-blank').onclick = () => { S = blank(); save(); bindInputs(); $('example-pill').hidden = true; render(); toast('Started a blank plan'); };
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-brief') copyText($('brief-text').innerText, 'Brief copied'); });
+    const rail = $('rail'), scrim = $('scrim');
+    const setRail = (open) => { rail.classList.toggle('open', open); scrim.classList.toggle('open', open); $('btn-open-rail').setAttribute('aria-expanded', String(open)); };
+    $('btn-open-rail').onclick = () => setRail(true);
+    $('btn-close-rail').onclick = scrim.onclick = () => setRail(false);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setRail(false); });
   }
 
   /* ---------- boot ---------- */

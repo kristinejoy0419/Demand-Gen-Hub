@@ -21,7 +21,8 @@
   </header>
 
   <div class="grid">
-    <aside class="rail" aria-label="Plan inputs">
+    <aside class="rail" id="rail" aria-label="Plan inputs">
+      <div class="rail-head"><h3>Plan inputs</h3><button class="btn" type="button" id="btn-close-rail">Done</button></div>
       <details class="card" open>
         <summary><h3>1 · Campaign &amp; brief</h3><small>what we're launching</small></summary>
         <div class="body">
@@ -96,6 +97,8 @@
     </section>
   </div>
 </div>
+<button class="btn primary inputs-btn" type="button" id="btn-open-rail" aria-controls="rail">Edit inputs</button>
+<div class="scrim" id="scrim"></div>
 <div class="toast" id="toast" hidden></div>
 <script src="app.js"></script>
 </body>
