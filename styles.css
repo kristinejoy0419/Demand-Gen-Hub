@@ -394,3 +394,6 @@ details.more[open]>summary{margin-bottom:8px}
 .wz-op{display:flex;flex-direction:column;gap:10px}
 .wz-op .wz-head{max-width:420px}
 #brief-status{color:var(--accent)}
+.aimode{border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;margin:0;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.aimode legend{font-size:12px;font-weight:600;color:var(--muted);padding:0 4px}
+.aimode label{display:flex;gap:8px;align-items:center;cursor:pointer}

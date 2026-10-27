@@ -632,7 +632,25 @@
       (worst && worst.gap > 0.5 ? '. The biggest gap is ' + esc(worst.name) + ' at ' + fmtInt(worst.gap) + ' MQLs' : '') + '. ' + watches + ' smaller item' + (watches === 1 ? '' : 's') + ' to watch are in each region below.</p>' +
       (fixes.length ? '<b>Act on first</b><ul>' + fixes.slice(0, 4).map((f) => '<li>' + f + '</li>').join('') + '</ul>' : '<p class="note">Nothing to fix.</p>') + '</div>';
   }
-  let aiKey = '';
+  // Built-in Gemini key every visitor uses, stored base64 of the reversed key. This is not a secret:
+  // it ships in the page, so restrict it to this site's domain and the Gemini API in Google Cloud.
+  const HUB_GEMINI_KEY = '';
+  const hubKey = () => { try { return HUB_GEMINI_KEY ? atob(HUB_GEMINI_KEY).split('').reverse().join('') : ''; } catch (e) { return ''; } };
+  let ownKey = '', aiMode = 'own';
+  try { aiMode = hubKey() && localStorage.getItem(STORE_KEY + ':ai') !== 'own' ? 'hub' : 'own'; } catch (e) { aiMode = hubKey() ? 'hub' : 'own'; }
+  let aiKey = aiMode === 'hub' ? hubKey() : '';
+  function setAiMode(m) {
+    aiMode = m; aiKey = m === 'hub' ? hubKey() : ownKey;
+    try { localStorage.setItem(STORE_KEY + ':ai', m); } catch (e) { /* ignore */ }
+    showAiMode(); render();
+  }
+  function showAiMode() {
+    const hub = !!hubKey(), own = aiMode === 'own';
+    $('ai-mode').hidden = !hub;
+    document.querySelectorAll('input[name="aimode"]').forEach((r) => { r.checked = r.value === aiMode; });
+    ['in-ai-key', 'in-ai-key-brief'].forEach((id) => { $(id).closest('label').hidden = !own; });
+    $('brief-key-hint').hidden = !own; $('rg-ai-hint').hidden = !own;
+  }
   // one call for either provider: a free Gemini key (AIza...) or an Anthropic key (sk-ant-...)
   const aiName = () => (/^sk-ant-/.test(aiKey) ? 'Claude' : aiKey ? 'Gemini' : 'the AI');
   // Gemini's responseSchema is an OpenAPI subset: upper-case types, no additionalProperties
@@ -1885,7 +1903,9 @@
       a.href = URL.createObjectURL(new Blob([templateCsv()], { type: 'text/csv' }));
       a.download = slug(rpSel || 'region') + '-plan-template.csv'; document.body.appendChild(a); a.click(); a.remove();
     };
-    ['in-ai-key', 'in-ai-key-brief'].forEach((id) => { $(id).oninput = (e) => { aiKey = e.target.value.trim(); ['in-ai-key', 'in-ai-key-brief'].forEach((o) => { if (o !== id) $(o).value = e.target.value; }); render(); }; });
+    ['in-ai-key', 'in-ai-key-brief'].forEach((id) => { $(id).oninput = (e) => { ownKey = e.target.value.trim(); if (aiMode === 'own') aiKey = ownKey; ['in-ai-key', 'in-ai-key-brief'].forEach((o) => { if (o !== id) $(o).value = e.target.value; }); render(); }; });
+    document.querySelectorAll('input[name="aimode"]').forEach((r) => { r.onchange = () => setAiMode(r.value); });
+    showAiMode();
     $('in-brief-file').onchange = (e) => readBrief(e.target.files[0]);
     $('btn-fill-brief').onclick = () => runAgent(null);
     $('in-brief-paste').oninput = () => { if (briefDoc) { briefDoc = null; $('in-brief-file').value = ''; $('brief-file-name').textContent = 'Using the pasted text.'; } };
