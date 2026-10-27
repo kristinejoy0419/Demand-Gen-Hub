@@ -1,5 +1,5 @@
-Region,Program,Channel,Month,Budget,MQLs,Notes
-LATAM,São Paulo IT leaders forum,Event,Apr,85000,30,Co-hosted with a local SI partner
-LATAM,Mexico City partner day,Partner,Jul,40000,18,
-LATAM,Spanish-language AI governance webinar,Webinar,Jun,12000,22,Localized from the global series
-LATAM,Tier 1 exec dinner series,Event,Dec,60000,8,
+Region,Program,Type,Supports HQ campaign,Audience,Target accounts,Offer or asset,Month,Owner,Budget,MQLs,Status,Notes
+LATAM,São Paulo IT leaders forum,Field event,Governed AI for IT,CIO / Head of IT,2 Tier 1 + 10 Tier 2,Analyst report on governed AI agents,Apr,LATAM field marketing,85000,30,Confirmed,Co-hosted with a local SI partner
+LATAM,Mexico City partner day,Partner,Admin & governance add-on,IT admin / architect,Tier 2 + 3,Security & admin deep-dive webinar,Jul,LATAM partner team,40000,18,Planned,Partner brings 40 accounts
+LATAM,Spanish-language AI governance webinar,Webinar,Admin & governance add-on,IT admin / architect,Tier 2 + 3,Security & admin deep-dive webinar,Jun,LATAM demand gen,12000,22,Planned,Localized from the global series
+LATAM,Tier 1 exec dinner series,ABM play,Governed AI for IT,CIO / Head of IT,2 Tier 1,Exec briefing + reference call,Dec,LATAM enterprise AE,60000,8,Planned,
