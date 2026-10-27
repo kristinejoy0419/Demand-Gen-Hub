@@ -13,7 +13,7 @@ It's a static site with no build step.
 
 ## Inputs (left rail)
 
-Grouped as Strategy, Targets, Audience, Programs, Regions and Run it.
+Grouped as Strategy, Targets, Audience, Programs, Regions and Execution.
 
 - **Campaign & brief:** campaign name, fiscal year, products in scope and brief notes.
 - **Campaigns:** each campaign's tier (Tier 1 launch, Tier 2 launch, always-on, seasonal), status, theme, hero offer, audience, product, start, launch and end months, share of pipeline, programs and owner.
@@ -47,7 +47,7 @@ Grouped as Strategy, Targets, Audience, Programs, Regions and Run it.
 | | Calendar | MQLs by program and month |
 | Regions & accounts | Regional plans | The regional roll-up, a regional digest of what to act on first, and a section and digest per region, with an optional Claude-written read |
 | | Buying committee & ABM | Asset status, an offer matrix by role and stage, a to-do list, and ABM by region, with a region picker |
-| Run it | Team & owners | Team load against capacity, SLAs and escalation paths, and a RACI |
+| Execution | Team & owners | Team load against capacity, SLAs and escalation paths, and a RACI |
 | | Paid brief | A copy-ready brief for the paid media shared service |
 | | Measurement | KPIs with targets, review cadence, owners and sources |
 | | Scenarios & asks | Asks of leadership, pipeline at 80%, 100% and 120% budget, and the cut order |

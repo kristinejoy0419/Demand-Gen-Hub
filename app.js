@@ -8,6 +8,7 @@
   const STAGES = ['Aware', 'Consider', 'Decide'], ASSET_STATUS = ['Live', 'In production', 'Missing'], LOC_STATUS = ['Not needed', 'Requested', 'In progress', 'Ready'];
   let comRegion = 'All regions';
   const RISK_STATUS = ['On track', 'Watching', 'Triggered'];
+  const RISK_LINKS = ['Owner sets it', 'Regional coverage', 'SDR capacity', 'MQL → SQO', 'Pacing'];
   const FUNCTIONS = ['Demand gen', 'PMM', 'Field', 'Partner', 'Paid (shared svc)', 'Creative', 'RevOps', 'Sales / SDR'];
 
   /* ---------- example ---------- */
@@ -135,7 +136,7 @@
           signal: 'Launch readiness review: beta exit criteria, pricing and enablement sign-off', trigger: 'Launch date not locked 6 weeks before the burst',
           contingency: 'Hold the launch burst budget. Keep always-on core programs running. Re-time the launch webinar and paid burst to the new date, and fill the gap with a governance pre-briefing for Tier 1 accounts.',
           mitigation: 'Weekly launch stand-up with PMM; build creative so the date can change without rework' },
-        { risk: 'Commercial MQL → SQO lands below plan', likelihood: 'Medium', impact: 2000000, status: 'On track', owner: 'Demand gen',
+        { risk: 'Commercial MQL → SQO lands below plan', likelihood: 'Medium', impact: 2000000, status: 'On track', owner: 'Demand gen', link: 'MQL → SQO',
           signal: 'Weekly MQL → SQO rate by segment', trigger: 'Commercial below 13% for 3 weeks in a row',
           contingency: 'Raise the MQL score threshold with RevOps, route low-fit MQLs to nurture, and move 10% of Commercial paid budget to in-product PQL plays.',
           mitigation: 'Agree scoring and SLA with RevOps before the year starts; review at day 30' },
@@ -143,11 +144,11 @@
           signal: 'Non-brand organic sessions vs AI citation rate on tracked prompts', trigger: 'Organic sessions down 15% quarter on quarter with no lift in AI-referred traffic',
           contingency: 'Move half of the SEO content budget to AEO answer pages and comparison content, and add AI-referred MQLs to the weekly readout.',
           mitigation: 'Structure priority pages as direct answers; track citations monthly' },
-        { risk: 'SDR capacity in launch months', likelihood: 'Medium', impact: 1500000, status: 'Watching', owner: 'Sales / SDR',
+        { risk: 'SDR capacity in launch months', likelihood: 'Medium', impact: 1500000, status: 'Watching', owner: 'Sales / SDR', link: 'SDR capacity',
           signal: 'Share of MQLs worked within 24 hours', trigger: 'Follow-up SLA under 85% in any week',
           contingency: 'Route Tier 3 and Commercial MQLs to automated nurture, borrow 2 SDRs from outbound for the launch month, and send partner-sourced leads to partner managers.',
           mitigation: 'Stagger regional launch dates; plan SDR coverage with sales a quarter ahead' },
-        { risk: 'Regional plans fall short of what regions owe', likelihood: 'Low', impact: 8900000, status: 'Triggered', owner: 'Field',
+        { risk: 'Regional plans fall short of what regions owe', likelihood: 'Low', impact: 8900000, status: 'Triggered', owner: 'Field', link: 'Regional coverage',
           signal: 'Regional coverage in the roll-up', trigger: 'Any region under 70% coverage 4 weeks before the quarter starts',
           contingency: 'HQ fills the gap with a global webinar series and a paid burst into the short regions, and escalates to the regional VP for a plan by the next forecast call.',
           mitigation: 'Set a submission date for every region; review the roll-up weekly' }
@@ -391,12 +392,13 @@
     ], { noun: 'product', make: () => ({ name: '', share: 0, launch: 0 }) });
     editor('ed-risks', S.risks, [
       { key: 'risk', label: 'Risk or assumption', type: 'area', w: 150 },
-      { key: 'status', label: 'Status', type: 'select', options: RISK_STATUS },
+      { key: 'link', label: 'Status set by', type: 'select', options: RISK_LINKS },
+      { key: 'status', label: 'Status (if owner sets it)', type: 'select', options: RISK_STATUS },
       { key: 'likelihood', label: 'Likelihood', type: 'select', options: ['High', 'Medium', 'Low'] },
       { key: 'impact', label: 'Pipeline at risk $', type: 'num', w: 80 }, { key: 'owner', label: 'Owner', w: 90 },
       { key: 'signal', label: 'Early warning signal', type: 'area', w: 160 }, { key: 'trigger', label: 'Trigger', type: 'area', w: 150 },
       { key: 'contingency', label: 'Contingency plan', type: 'area', w: 200 }, { key: 'mitigation', label: 'Prevent now', type: 'area', w: 160 }
-    ], { noun: 'risk', make: () => ({ risk: '', status: 'On track', likelihood: 'Medium', impact: 0, owner: '', signal: '', trigger: '', contingency: '', mitigation: '' }) });
+    ], { noun: 'risk', make: () => ({ risk: '', link: 'Owner sets it', status: 'On track', likelihood: 'Medium', impact: 0, owner: '', signal: '', trigger: '', contingency: '', mitigation: '' }) });
     bindRegionPlan();
   }
 
@@ -624,7 +626,7 @@
     ['Overview', [['onepage', 'Plan on a page'], ['summary', 'Summary'], ['pacing', 'Pacing']]],
     ['Plan', [['campaigns', 'Campaigns'], ['quarters', 'Quarterly plan'], ['funnel', 'Funnel & motion'], ['channels', 'Channel mix'], ['calendar', 'Calendar']]],
     ['Regions & accounts', [['regions', 'Regional plans'], ['committee', 'Buying committee & ABM']]],
-    ['Run it', [['owners', 'Team & owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['scenarios', 'Scenarios & asks'], ['risks', 'Risks']]]
+    ['Execution', [['owners', 'Team & owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['scenarios', 'Scenarios & asks'], ['risks', 'Risks']]]
   ];
   const TABS = TAB_GROUPS.flatMap((g) => g[1]);
   function renderTabs() {
@@ -645,8 +647,32 @@
   }
   const lastIn = {};
 
+  // readiness spider for the hero: each spoke is 0–100% of where the plan needs to be
+  function spider(P) {
+    const peak = Math.max(0, ...P.monthly), A = S.assets, cap = (v) => Math.max(0, Math.min(1, v || 0));
+    const ax = [
+      ['Pipeline coverage', P.base.mktNeed ? P.tot.pipe / P.base.mktNeed : 1, 'funnel'],
+      ['Pacing', P.pace.asOf ? P.pace.pace : 1, 'pacing'],
+      ['Regional plans', P.roll.coverage, 'regions'],
+      ['SDR capacity', peak ? P.sdrCap / peak : 1, 'funnel'],
+      ['Assets live', A.length ? A.filter((a) => a.status === 'Live').length / A.length : 1, 'committee'],
+      ['Team capacity', P.team.length ? P.team.filter((t) => !t.over).length / P.team.length : 1, 'owners']
+    ];
+    const W = 340, H = 236, cx = W / 2, cy = 122, R = 78, n = ax.length;
+    const pt = (i, r) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
+    const ring = (f) => ax.map((_, i) => pt(i, R * f).map((v) => v.toFixed(1)).join(',')).join(' ');
+    const grid = [0.25, 0.5, 0.75, 1].map((f) => '<polygon class="sp-ring' + (f === 1 ? ' full' : '') + '" points="' + ring(f) + '"/>').join('') + ax.map((_, i) => { const [x, y] = pt(i, R); return '<line class="sp-spoke" x1="' + cx + '" y1="' + cy + '" x2="' + x.toFixed(1) + '" y2="' + y.toFixed(1) + '"/>'; }).join('');
+    const shape = '<polygon class="sp-shape" points="' + ax.map(([, v], i) => pt(i, R * cap(v)).map((q) => q.toFixed(1)).join(',')).join(' ') + '"/>';
+    const dots = ax.map(([, v], i) => { const [x, y] = pt(i, R * cap(v)); return '<circle class="sp-dot ' + (v >= 0.95 ? 'ok' : v >= 0.7 ? 'watch' : 'fix') + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4"/>'; }).join('');
+    const labels = ax.map(([l, v, go], i) => {
+      const [x, y] = pt(i, R + 16), anchor = Math.abs(x - cx) < 4 ? 'middle' : x > cx ? 'start' : 'end', dy = y < cy - 10 ? -4 : y > cy + 10 ? 12 : 4;
+      return '<g class="sp-ax" data-go="' + go + '" role="button" tabindex="0" aria-label="' + l + ' ' + Math.round(v * 100) + '%, open"><title>Open ' + l + '</title><text x="' + x.toFixed(1) + '" y="' + (y + dy).toFixed(1) + '" text-anchor="' + anchor + '">' + l + ' <tspan class="' + (v >= 0.95 ? 'ok' : v >= 0.7 ? 'watch' : 'fix') + '">' + Math.round(Math.min(v, 9.99) * 100) + '%</tspan></text></g>';
+    }).join('');
+    return '<div class="sp-title">Plan readiness <span class="note">· dashed ring is 100% · tap a spoke</span></div><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Plan readiness across six measures">' + grid + shape + dots + labels + '</svg>';
+  }
   function render() {
     const P = extend(compute());
+    $('hero-spider').innerHTML = spider(P);
     $('panel').innerHTML = (VIEWS[tab] || VIEWS2[tab])(P);
     if (tab === 'owners') bindRaci();
   }
@@ -705,14 +731,21 @@
       const sections = P.regions.map((r) => {
         const progs = (r.plan.programs || []).filter((x) => x.name || num(x.mql));
         const list = progs.length ? '<ul>' + progs.map((x) => '<li>' + esc(x.name || 'Untitled') + ' <span class="note">· month ' + fmtInt(num(x.month)) + ' (' + (P.labels[Math.round(num(x.month)) - 1] || '?') + ') · ' + money(num(x.budget)) + ' · ' + fmtInt(num(x.mql)) + ' MQLs</span></li>').join('') + '</ul>' : '<p class="note">No regional programs yet.</p>';
-        return '<div class="box region' + (r.status === 'Not started' ? ' empty' : '') + '" id="rg-' + slug(r.name) + '"><div class="rhead"><h3>' + esc(r.name) + '</h3>' + statusPill(r.status) + '</div>' +
+        return '<div class="box region' + (r.status === 'Not started' ? ' empty' : '') + '" id="rg-' + slug(r.name) + '"><div class="rmain"><div class="rhead"><h3>' + esc(r.name) + '</h3>' + statusPill(r.status) + '</div>' +
           '<p class="note">' + pct(r.w * 100) + ' of the number · ' + money(r.pipe) + ' pipeline · ' + fmtInt(r.mql) + ' MQLs' + (r.lead ? ' · owned by ' + esc(r.lead) : '') + '</p>' +
           '<div><b>HQ delivers</b> ' + fmtInt(r.fromHq) + ' MQLs from global programs</div>' +
           '<div><b>Region owes</b> ' + fmtInt(r.owes) + ' MQLs from its own programs</div>' + list +
           (r.plan.adapt ? '<div><b>Adapting locally</b> ' + esc(r.plan.adapt) + '</div>' : '') +
-          '<div class="' + (r.gap > 0.5 ? 'gap' : 'ok') + '">' + (r.gap > 0.5 ? 'Gap: ' + fmtInt(r.gap) + ' MQLs' : 'Covered') + ' · ' + coverCell(r.coverage) + ' coverage</div>' + digestBox(r, P) + '</div>';
+          '<div class="' + (r.gap > 0.5 ? 'gap' : 'ok') + '">' + (r.gap > 0.5 ? 'Gap: ' + fmtInt(r.gap) + ' MQLs' : 'Covered') + ' · ' + coverCell(r.coverage) + ' coverage</div></div>' + digestBox(r, P) + '</div>';
       }).join('');
-      return '<div><h2>Regional plans</h2><p class="lead">HQ owns the strategy, message, platforms and measurement. Each region owns its slice of the number and uploads its plan in the left pane, under Regional plans. Each upload gets a digest that checks it against the global plan. Tap a region to see how its numbers are built.</p></div>' +
+      const regNames = P.regions.map((r) => r.name);
+      const upChips = P.regions.map((r) => '<span class="upchip' + (r.plan.file || (r.plan.programs || []).length ? ' done' : '') + '">' + esc(r.name) + ' · ' + (r.plan.file ? esc(r.plan.file) : (r.plan.programs || []).length ? (r.plan.programs.length + ' program' + (r.plan.programs.length === 1 ? '' : 's') + ' entered') : 'no plan yet') + '</span>').join('');
+      const upload = '<div class="box rgup"><div class="rgup-head"><h3>Upload a regional plan</h3><span class="note">CSV or Excel · one row per program · columns for program, month, budget and MQLs, in any order</span></div>' +
+        '<div class="rgup-row"><label class="f">Region<select id="rg-up-region">' + regNames.map((n) => '<option' + (n === rpSel ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select></label>' +
+        '<label class="f rgup-file">Plan file<input id="rg-up-file" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls"' + (regNames.length ? '' : ' disabled') + '></label></div>' +
+        '<p class="hint"><button class="linkbtn" type="button" id="rg-up-template">Download the template</button> · <a href="samples/latam-plan.csv" download>Try a sample LATAM plan</a> · A region can also copy its plan as text and HQ pastes it in the left pane, under Regional plans.</p>' +
+        '<div class="upchips">' + upChips + '</div></div>';
+      return '<div><h2>Regional plans</h2><p class="lead">HQ owns the strategy, message, platforms and measurement. Each region owns its slice of the number and uploads its plan below. Each upload gets a digest that checks it against the global plan. Tap a region to see how its numbers are built.</p></div>' + upload +
         '<div class="out"><table class="t" data-export><thead><tr><th>Region</th><th>Status</th><th class="n">Pipeline</th><th class="n">MQL target</th><th class="n">From HQ programs</th><th class="n">Region owes</th><th class="n">Committed</th><th class="n">Regional budget</th><th class="n">Coverage</th><th class="n">Gap</th></tr></thead><tbody>' + rows +
         '</tbody><tfoot><tr><td>Total</td><td>' + P.regions.filter((r) => r.status === 'Submitted').length + ' of ' + P.regions.length + ' submitted</td><td class="n">' + money(P.tot.pipe) + '</td><td class="n">' + fmtInt(R.mql) + '</td><td class="n">' + fmtInt(R.fromHq) + '</td><td class="n">' + fmtInt(R.owes) + '</td><td class="n">' + fmtInt(R.committed) + '</td><td class="n">' + money(R.spend) + '</td><td class="n">' + coverCell(R.coverage) + '</td><td class="n">' + fmtInt(R.gap) + '</td></tr></tfoot></table></div>' +
         '<p class="note">HQ programs: ' + hq + '. Region-run programs: ' + own + '. Change who runs a program in Channels &amp; programs.</p>' +
@@ -738,25 +771,26 @@
         '<h3>Pipeline by segment and quarter</h3><div class="out"><table class="t"><thead><tr><th>Segment</th>' + qh + '<th class="n">Year</th></tr></thead><tbody>' + split(P.segs) + '</tbody></table></div>' +
         '<p class="note">Quarters start at the plan start month. Budget follows when each program delivers its MQLs.</p>';
     },
-    risks() {
+    risks(P) {
       const so = { Triggered: 0, Watching: 1, 'On track': 2 }, lo = { High: 0, Medium: 1, Low: 2 };
-      const list = S.risks.slice().sort((a, b) => ((so[a.status] ?? 3) - (so[b.status] ?? 3)) || ((lo[a.likelihood] ?? 3) - (lo[b.likelihood] ?? 3)));
+      const list = P.risks.slice().sort((a, b) => ((so[a.status] ?? 3) - (so[b.status] ?? 3)) || ((lo[a.likelihood] ?? 3) - (lo[b.likelihood] ?? 3)));
       const count = (st) => list.filter((r) => (r.status || 'On track') === st).length;
       const atRisk = list.filter((r) => r.status === 'Triggered' || r.status === 'Watching').reduce((t, r) => t + Math.max(0, num(r.impact)), 0);
       const cards = list.map((r) => {
         const st = r.status || 'On track';
         return '<details class="risk ' + st.replace(' ', '-').toLowerCase() + '"' + (st === 'Triggered' ? ' open' : '') + '><summary>' +
-          '<span class="rtop">' + riskPill(st) + '<span class="note">' + esc(r.likelihood || '–') + ' likelihood' + (num(r.impact) ? ' · ' + money(num(r.impact)) + ' pipeline at risk' : '') + '</span>' + '</span>' +
+          '<span class="rtop">' + riskPill(st) + '<span class="note">' + (r.auto ? 'Tracked from the plan: ' + esc(r.link) : st === 'Triggered' ? 'Happening now' : esc(r.likelihood || '–') + ' likelihood') + (num(r.impact) ? ' · ' + money(num(r.impact)) + ' pipeline at risk' : '') + '</span>' + '</span>' +
           '<b class="rname">' + esc(r.risk || 'Untitled risk') + '</b><span class="note">Owner: ' + esc(r.owner || '–') + '</span></summary>' +
           '<div class="rbody">' +
+          '<div class="wide basis"><h4>Based on</h4><p>' + r.basis + '</p></div>' +
           '<div><h4>Early warning</h4><p>' + (esc(r.signal) || '<span class="note">Add the signal to watch</span>') + '</p></div>' +
           '<div><h4>Trigger</h4><p>' + (esc(r.trigger) || '<span class="note">Add the threshold that sets off the plan</span>') + '</p></div>' +
           '<div class="act"><h4>' + (st === 'Triggered' ? 'Do now' : 'If triggered') + '</h4><p>' + (esc(r.contingency) || '<span class="note">Add the contingency plan</span>') + '</p></div>' +
           '<div><h4>Prevent now</h4><p>' + (esc(r.mitigation) || '<span class="note">–</span>') + '</p></div>' +
           '</div></details>';
       }).join('') || '<p class="note">No risks yet. Add them in the left pane, under Risks &amp; contingencies.</p>';
-      const exp = list.map((r) => '<tr><td>' + esc(r.risk) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.likelihood) + '</td><td>' + money(num(r.impact)) + '</td><td>' + esc(r.owner) + '</td><td>' + esc(r.signal) + '</td><td>' + esc(r.trigger) + '</td><td>' + esc(r.contingency) + '</td><td>' + esc(r.mitigation) + '</td></tr>').join('');
-      return '<div><h2>Risks &amp; contingencies</h2><p class="lead">Each risk has an early warning signal, the threshold that triggers it, and the plan we run when it does. Owners check their signals in the weekly pipeline review. Open a risk to see its plan.</p></div>' +
+      const exp = list.map((r) => '<tr><td>' + esc(r.risk) + '</td><td>' + esc(r.status) + '</td><td>' + (r.auto ? 'Tracked: ' + esc(r.link) : esc(r.likelihood)) + '</td><td>' + money(num(r.impact)) + '</td><td>' + esc(r.owner) + '</td><td>' + esc(r.signal) + '</td><td>' + esc(r.trigger) + '</td><td>' + esc(r.contingency) + '</td><td>' + esc(r.mitigation) + '</td></tr>').join('');
+      return '<div><h2>Risks &amp; contingencies</h2><p class="lead">Each risk has an early warning signal, the threshold that triggers it, and the plan we run when it does. Risks tied to a plan number (regional coverage, SDR capacity, MQL → SQO, pacing) set their own status and pipeline at risk from the live plan; the rest are set by their owner. Open a risk to see what it is based on and its plan.</p></div>' +
         '<div class="tiles"><div class="tile' + (count('Triggered') ? ' alert' : '') + '"><span>Triggered</span><b>' + count('Triggered') + '</b><span>contingency running</span></div>' +
         '<div class="tile"><span>Watching</span><b>' + count('Watching') + '</b><span>signal moving</span></div>' +
         '<div class="tile"><span>On track</span><b>' + count('On track') + '</b><span>no action</span></div>' +
@@ -953,6 +987,7 @@
     const e = Math.min(100, Math.max(0, num(S.expShare))) / 100;
     const expSqo = P.tot.sqo * e, pqlNeed = num(S.expConv) ? expSqo / (num(S.expConv) / 100) : 0, pqlSupply = num(S.pqlPerMonth) * 12;
     P.motion = { e, newPipe: P.tot.pipe * (1 - e), expPipe: P.tot.pipe * e, newSqo: P.tot.sqo * (1 - e), expSqo, expMqlViaMql: P.tot.mql * e, pqlNeed, pqlSupply, influenced: num(S.influenced) };
+    P.risks = S.risks.map((r) => liveRisk(r, P));
     // baseline and coverage
     const need = num(S.salesTarget) * num(S.coverage), mktNeed = need * num(S.mktShare) / 100;
     P.base = {
@@ -963,21 +998,117 @@
     };
     return P;
   }
+  // a risk tied to a plan signal sets its own status and pipeline at risk from the live numbers
+  function riskLink(r) {
+    if (RISK_LINKS.includes(r.link)) return r.link;
+    const t = String(r.risk || '');
+    return /region/i.test(t) ? 'Regional coverage' : /SDR/i.test(t) ? 'SDR capacity' : /SQO|conversion/i.test(t) ? 'MQL → SQO' : /pac(e|ing)/i.test(t) ? 'Pacing' : 'Owner sets it';
+  }
+  function liveRisk(r, P) {
+    const link = riskLink(r), own = Object.assign({}, r, { link, auto: false, basis: 'Status, likelihood and pipeline at risk are set by the owner in the left pane, under Risks & contingencies.' });
+    const ppm = P.ppm, pps = P.tot.sqo ? P.tot.pipe / P.tot.sqo : 0;
+    const auto = (status, impact, basis) => Object.assign({}, r, { link, auto: true, status, impact: Math.max(0, impact), basis });
+    if (link === 'Regional coverage') {
+      const R = P.roll, low = P.regions.filter((g) => g.owes > 0.5 && g.coverage < 0.7);
+      return auto(low.length ? 'Triggered' : R.coverage < 0.95 ? 'Watching' : 'On track', R.gap * ppm,
+        'Regional roll-up: ' + (low.length ? low.map((g) => esc(g.name) + ' ' + Math.round(g.coverage * 100) + '%').join(', ') + ' under 70% coverage. ' : 'every region at 70% or more. ') +
+        'Regions are short ' + fmtInt(R.gap) + ' MQLs × ' + money(ppm) + ' pipeline per MQL = ' + money(R.gap * ppm) + ' at risk.');
+    }
+    if (link === 'SDR capacity') {
+      if (!(P.sdrCap > 0)) return Object.assign(own, { basis: 'Set SDR headcount and capacity in the left pane to track this from the plan.' });
+      const over = P.monthly.map((v, i) => [v - P.sdrCap, i]).filter(([x]) => x > 0.5), excess = over.reduce((a, [x]) => a + x, 0);
+      return auto(over.length ? 'Watching' : 'On track', excess * ppm,
+        over.length ? 'MQLs planned above what SDRs can work in ' + over.map(([x, i]) => P.labels[i] + ' (+' + fmtInt(x) + ')').join(', ') + ' against ' + fmtInt(P.sdrCap) + ' a month. If those ' + fmtInt(excess) + ' MQLs go unworked, that is ' + money(excess * ppm) + ' of pipeline. Becomes Triggered when the weekly follow-up SLA slips.' :
+          'Every month\'s planned MQLs fit within ' + fmtInt(P.sdrCap) + ' a month of SDR capacity.');
+    }
+    if (link === 'MQL → SQO') {
+      const c = P.pace.cum;
+      if (!P.pace.asOf || !c.mql.act) return Object.assign(own, { basis: 'Tracked from actuals once you enter them in the left pane, under Actuals. Until then the owner sets the status.' });
+      const act = c.sqo.act / c.mql.act, ratio = P.spm ? act / P.spm : 1, rest = P.tot.mql - c.mql.act;
+      const lost = Math.max(0, (P.spm - act) * Math.max(0, rest) * pps);
+      return auto(ratio < 0.85 ? 'Triggered' : ratio < 0.95 ? 'Watching' : 'On track', lost,
+        'Actuals through ' + P.labels[P.pace.asOf - 1] + ': ' + pct(act * 100) + ' MQL → SQO vs ' + pct(P.spm * 100) + ' planned (' + Math.round(ratio * 100) + '% of plan). At that rate the remaining ' + fmtInt(rest) + ' MQLs make ' + money(lost) + ' less pipeline. Watching under 95% of plan, Triggered under 85%.');
+    }
+    if (link === 'Pacing') {
+      if (!P.pace.asOf) return Object.assign(own, { basis: 'Tracked from actuals once you enter them in the left pane, under Actuals.' });
+      const [k] = paceStatus(P.pace.pace), gap = P.tot.pipe - P.pace.forecast;
+      return auto(k === 'fix' ? 'Triggered' : k === 'watch' ? 'Watching' : 'On track', gap,
+        'Pipeline through ' + P.labels[P.pace.asOf - 1] + ' is at ' + Math.round(P.pace.pace * 100) + '% of plan, so the year lands at ' + money(P.pace.forecast) + ' against ' + money(P.tot.pipe) + '.');
+    }
+    return own;
+  }
   const growth = (now, then) => (then ? (now / then - 1) * 100 : null);
   const vsLy = (now, then) => { const g = growth(now, then); return g == null ? '' : (g >= 0 ? '+' : '') + Math.round(g) + '% vs last year'; };
   function paceStatus(p) { return p >= 0.95 ? ['ok', 'On pace'] : p >= 0.85 ? ['watch', 'Behind'] : ['fix', 'Well behind']; }
   function hp(k, t) { return '<span class="hp ' + k + '">' + t + '</span>'; }
-  function timeline(c, P) {
+  // what lives in one month of a campaign, and what could turn it red
+  function monthInfo(c, P, n) {
+    const s = Math.max(1, Math.round(num(c.start)) || 1), e = Math.min(12, Math.max(s, Math.round(num(c.end)) || 12)), L = Math.round(num(c.launch)) || s;
+    const flags = [], lives = [];
+    const ms = n < 1 ? c.ms.filter((x) => x[1] < 1) : c.ms.filter((x) => x[1] === n);
+    const roles = listOf(c.audience);
+    if (n < 1) {
+      flags.push([c.status === 'Planning' ? 'fix' : 'watch', ms.length + ' milestone' + (ms.length === 1 ? '' : 's') + ' fall before the plan year starts. ' + (c.status === 'Planning' ? 'Start them now or move the launch later.' : 'Check they are already done.')]);
+    } else {
+      const i = n - 1, live = n >= s && n <= e;
+      // SDR follow-up capacity
+      if (P.sdrCap > 0 && P.monthly[i] > P.sdrCap + 0.5) flags.push(['fix', 'SDRs are over capacity: ' + fmtInt(P.monthly[i]) + ' MQLs across the plan vs ' + fmtInt(P.sdrCap) + ' they can work. ' + (live ? 'This campaign adds about ' + fmtInt(P.monthly[i] * c.w) + '. Route overflow to nurture or move a burst.' : '')]);
+      // pacing against actuals
+      const m = P.pace.months[i];
+      if (m && m.act && m.plan.pipe) {
+        const r = m.act.pipe / m.plan.pipe, [k, l] = paceStatus(r);
+        if (k !== 'ok') flags.push([k, l + ': ' + money(m.act.pipe) + ' pipeline vs ' + money(m.plan.pipe) + ' planned (' + Math.round(r * 100) + '%).']);
+        else lives.push(['Actuals', 'On pace: ' + money(m.act.pipe) + ' vs ' + money(m.plan.pipe) + ' planned']);
+      }
+      // too much landing at once
+      if (ms.length >= 3) flags.push(['watch', ms.length + ' milestones land in the same month. Check the owners can carry them together.']);
+      // owners who are already over capacity
+      ms.forEach((x) => { const t = P.team.find((t) => t.over && x[2].toLowerCase().includes(String(t.fn).toLowerCase())); if (t) flags.push(['watch', esc(t.fn) + ' owns ' + esc(x[0].toLowerCase()) + ' but is already over capacity (' + t.load + ' vs ' + fmtInt(t.cap) + ').']); });
+      // assets the audience needs
+      const need = S.assets.filter((a) => roles.includes(a.role) && a.status !== 'Live');
+      need.filter((a) => Math.round(num(a.due)) === n).forEach((a) => flags.push(['watch', esc(a.asset) + ' for ' + esc(a.role) + ' is due (' + esc(a.status) + ', ' + esc(a.owner) + ').']));
+      if (n === L) {
+        const late = need.filter((a) => a.status === 'Missing' || Math.round(num(a.due)) > L || !num(a.due));
+        if (late.length) flags.push(['fix', 'Launches without: ' + late.map((a) => esc(a.asset) + ' (' + esc(a.status) + ')').join(', ') + '.']);
+      }
+      if (live) {
+        const progs = c.chans.map((x) => P.channels.find((y) => y.id === x.id)).filter(Boolean).map((y) => [y.name, y.byMonth[i] * c.w]).filter((x) => x[1] >= 0.5);
+        lives.push(['In market', fmtInt(P.monthly[i] * c.w) + ' MQLs and ' + money(P.monthlyCost[i] * c.w) + ' spend from this campaign']);
+        if (progs.length) lives.push(['Programs', progs.map(([nm, v]) => esc(nm) + ' ' + fmtInt(v)).join(', ')]);
+      } else lives.push(['In market', 'Not in market this month']);
+      if (P.momentAt[i].length) lives.push(['Launch moments', P.momentAt[i].map(esc).join(', ')]);
+      const reg = P.regions.flatMap((r) => (r.plan.programs || []).filter((x) => Math.round(num(x.month)) === n).map((x) => esc(x.name) + ' (' + esc(r.name) + ')'));
+      if (reg.length) lives.push(['Regional programs', reg.join(', ')]);
+      const asks = S.asks.filter((a) => Math.round(num(a.by)) === n);
+      if (asks.length) lives.push(['Asks due', asks.map((a) => esc(a.ask) + ' (' + esc(a.who) + ')').join('; ')]);
+    }
+    const k = flags.some((f) => f[0] === 'fix') ? 'fix' : flags.length ? 'watch' : '';
+    return { k, flags, lives, ms };
+  }
+  function timeline(c, P, ci) {
     const s = Math.max(1, Math.round(num(c.start)) || 1), e = Math.min(12, Math.max(s, Math.round(num(c.end)) || 12)), L = Math.round(num(c.launch)) || s;
     const early = c.ms.filter((x) => x[1] < 1);
-    const col = (label, cls, ms) => '<div class="tlc"><div class="tl' + cls + '">' + label + '</div><div class="tlm">' + ms.map((x) => '<span>' + esc(x[3] || x[0]) + '</span>').join('') + '</div></div>';
-    const cells = (early.length ? col('Before', ' pre', early) : '') + P.labels.map((m, i) => {
-      const n = i + 1;
-      return col(m, (n >= s && n <= e ? ' on' : '') + (n === L ? ' launch' : ''), c.ms.filter((x) => x[1] === n));
+    const ns = (early.length ? [0] : []).concat(P.labels.map((_, i) => i + 1));
+    const info = ns.map((n) => monthInfo(c, P, n));
+    const name = (n) => (n < 1 ? 'Before the plan year' : P.labels[n - 1]);
+    const cells = ns.map((n, j) => {
+      const x = info[j], cls = n < 1 ? ' pre' : (n >= s && n <= e ? ' on' : '') + (n === L ? ' launch' : '');
+      return '<button type="button" class="tlc' + (x.k ? ' ' + x.k : '') + '" data-tl="' + ci + '-' + n + '" aria-expanded="false" title="' + name(n) + ': see what is in this month">' +
+        '<span class="tl' + cls + '">' + (n < 1 ? 'Before' : P.labels[n - 1]) + (x.k ? '<i class="dot"></i>' : '') + '</span><span class="tlm">' + x.ms.map((m) => '<span>' + esc(m[3] || m[0]) + '</span>').join('') + '</span></button>';
     }).join('');
-    return '<div class="tlwrap"><div class="tlhead"><b>Timeline</b><span class="note">In market ' + P.labels[s - 1] + '–' + P.labels[e - 1] + ' · launch ' + (P.labels[L - 1] || '–') + '</span>' +
-      '<span class="tlkey"><i class="k on"></i>In market <i class="k launch"></i>Launch <span class="tlmk">Milestones</span></span></div>' +
-      '<div class="tlscroll"><div class="tlrow" style="grid-template-columns:repeat(' + (12 + (early.length ? 1 : 0)) + ',minmax(56px,1fr))">' + cells + '</div></div></div>';
+    const dets = ns.map((n, j) => {
+      const x = info[j];
+      const fl = x.flags.map(([k, t]) => hp(k, k === 'fix' ? 'Fix' : 'Watch') + '<span>' + t + '</span>').join('');
+      const msr = x.ms.map((m) => '<li><b>' + esc(m[0]) + '</b> <span class="note">· ' + esc(m[2]) + '</span></li>').join('');
+      const lv = x.lives.map(([h, t]) => '<div><h4>' + h + '</h4><p>' + t + '</p></div>').join('');
+      return '<div class="tldet" data-for="' + ci + '-' + n + '" hidden><div class="tldh"><b>' + name(n) + (n === L ? ' · launch month' : '') + '</b>' + (x.k ? hp(x.k, x.k === 'fix' ? 'Needs a fix' : 'Watch') : '<span class="hp ok">Clear</span>') + '</div>' +
+        (fl ? '<div class="health">' + fl + '</div>' : '<p class="note">Nothing flagged this month.</p>') +
+        '<div class="tlgrid">' + (msr ? '<div><h4>Milestones</h4><ul class="tlms">' + msr + '</ul></div>' : '') + lv + '</div></div>';
+    }).join('');
+    const nFlag = info.filter((x) => x.k).length;
+    return '<div class="tlwrap"><div class="tlhead"><b>Timeline</b><span class="note">In market ' + P.labels[s - 1] + '–' + P.labels[e - 1] + ' · launch ' + (P.labels[L - 1] || '–') + ' · click a month to see what is in it' + (nFlag ? ' and why it is flagged' : '') + '</span>' +
+      '<span class="tlkey"><i class="k on"></i>In market <i class="k launch"></i>Launch <i class="dot fix"></i>Needs a fix <i class="dot watch"></i>Watch <span class="tlmk">Milestones</span></span></div>' +
+      '<div class="tlscroll"><div class="tlrow" style="grid-template-columns:repeat(' + ns.length + ',minmax(56px,1fr))">' + cells + '</div></div>' + dets + '</div>';
   }
   function campaignHealth(P) {
     const out = [];
@@ -1000,7 +1131,7 @@
       const q = P.quarters.map((x) => '<td class="n">' + money(x.pipe) + '</td>').join('');
       const hl = health(P).filter((h) => h[0] !== 'ok').slice(0, 5).map(([k, s]) => hp(k, k === 'fix' ? 'Fix' : 'Watch') + '<span>' + esc(s) + '</span>').join('');
       const asks = S.asks.slice(0, 4).map((a) => '<li><b>' + esc(a.ask) + '</b> <span class="note">· ' + esc(a.who) + (num(a.by) ? ' · by ' + (P.labels[Math.round(num(a.by)) - 1] || '') : '') + '</span></li>').join('');
-      const risks = S.risks.filter((r) => r.status !== 'On track').map((r) => '<li>' + riskPill(r.status) + ' ' + esc(r.risk) + '</li>').join('');
+      const risks = P.risks.filter((r) => r.status !== 'On track').map((r) => '<li>' + riskPill(r.status) + ' ' + esc(r.risk) + '</li>').join('');
       const s80 = P.scen[0], s120 = P.scen[2];
       return '<div class="op-head"><div><h2>' + esc(S.name || 'Untitled plan') + '</h2><p class="lead">' + esc(S.fy) + ' plan on a page' + (S.product ? ' · ' + esc(S.product) : '') + '</p></div><button class="btn" type="button" id="btn-print">Print or save as PDF</button></div>' +
         '<div class="tiles">' +
@@ -1021,7 +1152,7 @@
       const cards = P.camps.map((c, i) => {
         const ms = c.ms.map((m) => '<tr><td>' + esc(m[0]) + '</td><td>' + (m[1] < 1 ? '<span class="pill burst">Before plan start</span>' : esc(P.labels[m[1] - 1] || 'Next FY')) + '</td><td>' + esc(m[2]) + '</td></tr>').join('');
         return '<details class="camp"' + (i === 0 ? ' open' : '') + '><summary><span class="rtop"><span class="pill ' + (c.tier === 'Tier 1 launch' ? 'burst' : c.tier === 'Always-on' ? 'on' : 'both') + '">' + esc(c.tier) + '</span><span class="note">' + esc(c.status || 'Planning') + ' · owner ' + esc(c.owner || '–') + '</span></span>' +
-          '<b class="rname">' + esc(c.name || 'Untitled campaign') + '</b><span class="note">' + money(c.pipe) + ' pipeline · ' + fmtInt(c.mql) + ' MQLs · ' + money(c.cost) + ' budget · ' + pct(c.w * 100) + ' of the plan</span>' + timeline(c, P) + '</summary>' +
+          '<b class="rname">' + esc(c.name || 'Untitled campaign') + '</b><span class="note">' + money(c.pipe) + ' pipeline · ' + fmtInt(c.mql) + ' MQLs · ' + money(c.cost) + ' budget · ' + pct(c.w * 100) + ' of the plan</span>' + timeline(c, P, i) + '</summary>' +
           '<div class="rbody"><div><h4>Theme</h4><p>' + (esc(c.theme) || '<span class="note">–</span>') + '</p></div><div><h4>Hero offer</h4><p>' + (esc(c.offer) || '<span class="note">–</span>') + '</p></div>' +
           '<div><h4>Audience</h4><p>' + (esc(c.audience) || '<span class="note">–</span>') + '</p></div><div><h4>Product</h4><p>' + (esc(c.product) || '<span class="note">–</span>') + '</p></div>' +
           '<div><h4>Programs</h4><p>' + (c.chans.map((x) => esc(x.name)).join(', ') || '<span class="note">None matched</span>') + '</p></div>' +
@@ -1050,7 +1181,7 @@
         } else acts.push(['ok', 'At this pace the year lands at ' + money(pc.forecast) + ', on or above target.']);
         if (actConv && actConv < P.spm * 0.95) acts.push(['watch', 'MQL → SQO is running at ' + pct(actConv * 100) + ' against ' + pct(P.spm * 100) + ' planned. Check lead quality with sales before adding volume.']);
         if (pc.cum.spend.act > pc.cum.spend.plan * 1.05) acts.push(['watch', 'Spend is ' + money(pc.cum.spend.act - pc.cum.spend.plan) + ' ahead of plan to date.']);
-        S.risks.filter((r) => r.status === 'Triggered').forEach((r) => acts.push(['fix', 'Triggered: ' + esc(r.risk) + '. ' + esc(r.contingency)]));
+        P.risks.filter((r) => r.status === 'Triggered').forEach((r) => acts.push(['fix', 'Triggered: ' + esc(r.risk) + '. ' + esc(r.contingency)]));
       }
       return '<div><h2>Pacing</h2><p class="lead">Plan vs actual by month, a run-rate forecast for the year, and what to do about it. Enter actuals in the left pane each month, or paste them from the CRM report.</p></div>' +
         '<div class="tiles"><div class="tile' + (pk === 'fix' ? ' alert' : '') + '"><span>Pipeline to date' + (pc.asOf ? ' · through ' + P.labels[pc.asOf - 1] : '') + '</span><b>' + money(pc.cum.pipe.act) + '</b><span>of ' + money(pc.cum.pipe.plan) + ' planned · ' + (pc.asOf ? pl : 'no actuals') + '</span></div>' +
@@ -1132,7 +1263,7 @@
     if (miss) out.push(['watch', miss + ' buying committee asset' + (miss > 1 ? 's' : '') + ' missing']);
     const noPlay = S.abmRegions.filter((g) => !g.owner || !g.next).length;
     if (noPlay) out.push(['watch', noPlay + ' region' + (noPlay > 1 ? 's have' : ' has') + ' no ABM owner or next play']);
-    const trig = S.risks.filter((x) => x.status === 'Triggered').length, watch = S.risks.filter((x) => x.status === 'Watching').length;
+    const LR = (P.risks || extend(P).risks), trig = LR.filter((x) => x.status === 'Triggered').length, watch = LR.filter((x) => x.status === 'Watching').length;
     if (trig) out.push(['fix', trig + ' risk' + (trig > 1 ? 's' : '') + ' triggered: run the contingency on the Risks tab']);
     if (watch) out.push(['watch', watch + ' risk' + (watch > 1 ? 's' : '') + ' with early warning signals moving']);
     const E = P.pace ? P : extend(P);
@@ -1255,6 +1386,68 @@
     if (!t) return null;
     return Array.from(t.rows).filter((r) => !r.classList.contains('why')).map((r) => Array.from(r.cells).map((c) => c.innerText.replace(/\s+/g, ' ').trim()));
   }
+  const tabLabel = () => (TABS.find((t) => t[0] === tab) || [tab, tab])[1];
+  const fileBase = () => slug((S.name || 'demand-gen-plan') + '-' + tabLabel());
+  function rowsOf(t) { return Array.from(t.rows).filter((r) => !r.classList.contains('why')).map((r) => Array.from(r.cells).map((c) => c.textContent.replace(/[▸▾]/g, '').replace(/\s+/g, ' ').trim())); }
+  function allTables() {
+    // the hidden export copy stands in for card layouts; otherwise every visible table
+    const ex = Array.from($('panel').querySelectorAll('table[data-export]'));
+    const vis = Array.from($('panel').querySelectorAll('table')).filter((t) => !t.hasAttribute('data-export') && !t.closest('[hidden]'));
+    return ex.concat(vis.filter((t) => !ex.some((x) => x.contains(t))));
+  }
+  function download(name, blob) {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  // a clean copy of the tab for docs: drill-downs and month details open, controls removed, plain table borders
+  function docHtml() {
+    const c = $('panel').cloneNode(true);
+    c.querySelectorAll('button, select, input, textarea, svg, .toolbar, table[data-export], .regpick, .rgup, #btn-print').forEach((x) => x.remove());
+    c.querySelectorAll('[hidden]').forEach((x) => { if (x.matches('tr.why')) x.hidden = false; else x.remove(); });
+    c.querySelectorAll('details').forEach((d) => { const div = document.createElement('div'); const sm = d.querySelector('summary'); if (sm) { const h = document.createElement('h3'); h.innerHTML = sm.innerHTML; div.appendChild(h); sm.remove(); } while (d.firstChild) div.appendChild(d.firstChild); d.replaceWith(div); });
+    c.querySelectorAll('table').forEach((t) => { t.setAttribute('border', '1'); t.setAttribute('cellpadding', '6'); t.style.cssText = 'border-collapse:collapse;font-size:10pt'; });
+    return '<h1>' + esc(S.name || 'Demand gen plan') + ' · ' + esc(tabLabel()) + '</h1>' + c.innerHTML;
+  }
+  async function exportTab(kind) {
+    const tables = allTables(), main = tableData();
+    if (kind === 'pdf') return window.print();
+    if (kind === 'sheets') {
+      if (!tables.length) return toast('No table on this tab');
+      return copyText(tables.map((t) => rowsOf(t).map((r) => r.map((x) => x.replace(/\t/g, ' ')).join('\t')).join('\n')).join('\n\n'), 'Copied. Paste into cell A1 of a Google Sheet');
+    }
+    if (kind === 'csv') {
+      if (!main) return toast('No table on this tab');
+      return download(fileBase() + '.csv', new Blob([main.map((r) => r.map((c) => /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c).join(',')).join('\n')], { type: 'text/csv' }));
+    }
+    if (kind === 'xlsx') {
+      if (!tables.length) return toast('No table on this tab');
+      try {
+        const X = await loadXlsx(), wb = X.utils.book_new(), used = {};
+        tables.forEach((t, i) => {
+          let h = t.closest('.box, div') && t.closest('.out') ? (t.closest('.out').previousElementSibling || {}).innerText : '';
+          let nm = String(h || (i ? tabLabel() + ' ' + (i + 1) : tabLabel())).replace(/[\\/?*\[\]:]/g, ' ').trim().slice(0, 28) || 'Sheet';
+          if (used[nm]) nm = nm.slice(0, 25) + ' ' + (++used[nm]); else used[nm] = 1;
+          X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(rowsOf(t).map((r) => r.map((v) => { const n = Number(v.replace(/[$,%x]/g, '')); return v && /^[−-]?\$?[\d,.]+[%x]?$/.test(v) && isFinite(n) ? (v.includes('%') ? n / 100 : n) : v; }))), nm);
+        });
+        X.writeFile(wb, fileBase() + '.xlsx');
+      } catch (e) { toast('Excel export needs a connection. Try Copy for Google Sheets.'); }
+      return;
+    }
+    const html = docHtml();
+    if (kind === 'docs') {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([$('panel').innerText], { type: 'text/plain' }) })]);
+        toast('Copied. Paste into a Google Doc');
+      } catch (e) {
+        const d = document.createElement('div'); d.contentEditable = 'true'; d.innerHTML = html; d.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(d);
+        const r = document.createRange(); r.selectNodeContents(d); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        try { document.execCommand('copy'); toast('Copied. Paste into a Google Doc'); } catch (x) { toast('Copy didn\'t work here. Try Download Word.'); }
+        sel.removeAllRanges(); d.remove();
+      }
+      return;
+    }
+    if (kind === 'doc') download(fileBase() + '.doc', new Blob(['<html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;font-size:11pt}h1{font-size:18pt}h2{font-size:15pt}h3{font-size:12pt}td,th{border:1px solid #999;padding:4pt;vertical-align:top}</style></head><body>' + html + '</body></html>'], { type: 'application/msword' }));
+  }
   async function copyText(text, msg) {
     try { await navigator.clipboard.writeText(text); toast(msg); }
     catch (e) {
@@ -1264,12 +1457,21 @@
     }
   }
   function wire() {
-    $('btn-copy').onclick = () => { const d = tableData(); if (!d) return toast('No table on this tab'); copyText(d.map((r) => r.join('\t')).join('\n'), 'Table copied'); };
-    $('btn-csv').onclick = () => { const d = tableData(); if (!d) return toast('No table on this tab'); copyText(d.map((r) => r.map((c) => /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c).join(',')).join('\n'), 'CSV copied'); };
+    $('export').addEventListener('click', (e) => { const b = e.target.closest('button[data-ex]'); if (!b) return; $('export').open = false; exportTab(b.dataset.ex); });
+    document.addEventListener('click', (e) => { if (!e.target.closest('#export')) $('export').open = false; });
+    // print with every campaign, risk and drill-down open, then put them back
+    let reopen = [];
+    window.addEventListener('beforeprint', () => { reopen = Array.from($('panel').querySelectorAll('details:not([open])')); reopen.forEach((d) => { d.open = true; }); });
+    window.addEventListener('afterprint', () => { reopen.forEach((d) => { d.open = false; }); reopen = []; });
     $('btn-reset').onclick = () => { S = example(); save(); bindInputs(); $('example-pill').hidden = false; render(); toast('Example reloaded'); };
     $('btn-blank').onclick = () => { S = blank(); save(); bindInputs(); $('example-pill').hidden = true; render(); toast('Started a blank plan'); };
     $('panel').addEventListener('change', (e) => { if (e.target.id === 'committee-region') { comRegion = e.target.value; render(); } });
     $('in-rp-file').onchange = (e) => uploadPlan(e.target.files[0]);
+    $('panel').addEventListener('change', (e) => {
+      if (e.target.id === 'rg-up-region') { rpSel = e.target.value; bindRegionPlan(); }
+      if (e.target.id === 'rg-up-file') { const f = e.target.files[0]; e.target.value = ''; uploadPlan(f); }
+    });
+    $('panel').addEventListener('click', (e) => { if (e.target.id === 'rg-up-template') $('btn-rp-template').click(); });
     $('btn-rp-template').onclick = () => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([templateCsv()], { type: 'text/csv' }));
@@ -1284,6 +1486,16 @@
       const row = b.closest('tr').nextElementSibling;
       if (row && row.classList.contains('why')) { row.hidden = !row.hidden; b.setAttribute('aria-expanded', String(!row.hidden)); }
     });
+    $('panel').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-tl]'); if (!b) return;
+      e.preventDefault();
+      const wrap = b.closest('.tlwrap'), id = b.dataset.tl, open = b.getAttribute('aria-expanded') === 'true';
+      wrap.querySelectorAll('button[data-tl]').forEach((x) => { x.setAttribute('aria-expanded', 'false'); x.classList.remove('sel'); });
+      wrap.querySelectorAll('.tldet').forEach((d) => { d.hidden = open || d.dataset.for !== id; });
+      if (!open) { b.setAttribute('aria-expanded', 'true'); b.classList.add('sel'); }
+    });
+    const goSpoke = (e) => { const g = e.target.closest && e.target.closest('[data-go]'); if (!g || (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); tab = g.dataset.go; renderTabs(); render(); $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    $('hero-spider').addEventListener('click', goSpoke); $('hero-spider').addEventListener('keydown', goSpoke);
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-print') window.print(); });
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-brief') copyText($('brief-text').innerText, 'Brief copied'); });
     const rail = $('rail'), scrim = $('scrim');
