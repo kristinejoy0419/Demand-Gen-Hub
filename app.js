@@ -796,6 +796,7 @@
 
   // the brief as Claude reads it: a PDF goes in as a document, everything else as text
   let briefDoc = null, busy = false;
+  let campOpen = 0; // which campaign card stays open across re-renders
   async function readBrief(f) {
     if (!f) return;
     const name = f.name, ext = (name.split('.').pop() || '').toLowerCase();
@@ -1336,15 +1337,29 @@
     }
     return { pipe, spent, moves };
   }
-  function milestones(c) {
-    const L = Math.round(num(c.launch)) || 1;
+  // best-practice lead times, in months from launch, by campaign tier. Tier 1 launches need the longest runway.
+  const MS_LEAD = {
+    'Tier 1 launch': { brief: -4, msg: -3, creative: -2, paid: -2, enable: -1, retro: 3 },
+    'Tier 2 launch': { brief: -3, msg: -2, creative: -1, paid: -1, enable: -1, retro: 2 },
+    'Always-on': { brief: -2, msg: -1, creative: -1, paid: -1, enable: -1, retro: 3 },
+    Seasonal: { brief: -3, msg: -2, creative: -1, paid: -1, enable: -1, retro: 2 }
+  };
+  // [name, months from launch, owner, short label]
+  function defaultMilestones(c) {
+    const t = MS_LEAD[c.tier] || MS_LEAD['Tier 2 launch'];
     const ms = [
-      ['Campaign brief', L - 3, 'Demand gen', 'Brief'], ['Messaging locked', L - 2, 'PMM', 'Messaging'], ['Creative & assets', L - 1, 'Creative', 'Creative'],
-      ['Sales enablement', L - 1, 'PMM + Sales', 'Enablement'], ['Launch', L, c.owner || 'Demand gen', 'Launch'], ['Retro & reset', L + 2, 'Demand gen + RevOps', 'Retro']
+      ['Campaign brief', t.brief, 'Demand gen', 'Brief'], ['Messaging locked', t.msg, 'PMM', 'Messaging'], ['Creative & assets', t.creative, 'Creative', 'Creative'],
+      ['Sales enablement', t.enable, 'PMM + Sales', 'Enablement'], ['Launch', 0, c.owner || 'Demand gen', 'Launch'], ['Retro & reset', t.retro, 'Demand gen + RevOps', 'Retro']
     ];
-    if (chFor(c.programs).some((x) => x.id === 'paid')) ms.splice(3, 0, ['Paid flight brief', L - 1, 'Paid (shared svc)', 'Paid brief']);
+    if (chFor(c.programs).some((x) => x.id === 'paid')) ms.splice(3, 0, ['Paid flight brief', t.paid, 'Paid (shared svc)', 'Paid brief']);
     return ms;
   }
+  function milestones(c) {
+    const L = Math.round(num(c.launch)) || 1;
+    const rows = Array.isArray(c.msPlan) ? c.msPlan : defaultMilestones(c);
+    return rows.map((m) => [m[0] || 'Milestone', L + Math.round(num(m[1])), m[2] || '', m[3] || m[0] || 'Milestone']);
+  }
+  const msWhen = (o) => (o === 0 ? 'Launch month' : Math.abs(o) + ' month' + (Math.abs(o) === 1 ? '' : 's') + (o < 0 ? ' before' : ' after') + ' launch');
   function extend(P) {
     const ppm = P.tot.mql ? P.tot.pipe / P.tot.mql : 0, spm = P.tot.mql ? P.tot.sqo / P.tot.mql : 0;
     P.ppm = ppm; P.spm = spm;
@@ -1510,7 +1525,7 @@
     }).join('');
     const nFlag = info.filter((x) => x.k).length;
     return '<div class="tlwrap"><div class="tlhead"><b>Timeline</b><span class="note">In market ' + P.labels[s - 1] + '–' + P.labels[e - 1] + ' · launch ' + (P.labels[L - 1] || '–') + ' · click a month to see what is in it' + (nFlag ? ' and why it is flagged' : '') + '</span>' +
-      '<span class="note tlwhy">Flags are automatic rule checks on your inputs, not AI guesses: milestones that fall before the plan year, SDR capacity, pacing against actuals, 3 or more milestones in one month, owners already over capacity, and assets due or missing at launch.</span>' +
+      '<details class="tlwhy"><summary class="note">How is this built?</summary><p class="note">Milestones are worked back from the launch month using best-practice lead times for the campaign\'s tier. Open the campaign to edit them under Milestones. Flags are automatic rule checks, not AI: milestones before the plan year, SDR capacity, pacing against actuals, 3 or more milestones in one month, owners over capacity, and assets due or missing at launch.</p></details>' +
       '<span class="tlkey"><i class="k on"></i>In market <i class="k launch"></i>Launch <i class="dot fix"></i>Needs a fix <i class="dot watch"></i>Watch <span class="tlmk">Milestones</span></span></div>' +
       '<div class="tlscroll"><div class="tlrow" style="grid-template-columns:repeat(' + ns.length + ',minmax(56px,1fr))">' + cells + '</div></div>' + dets + '</div>';
   }
@@ -1606,16 +1621,22 @@
     campaigns(P) {
       const ch = campaignHealth(P);
       const cards = P.camps.map((c, i) => {
-        const ms = c.ms.map((m) => '<tr><td>' + esc(m[0]) + '</td><td>' + (m[1] < 1 ? '<span class="pill burst">Before plan start</span>' : esc(P.labels[m[1] - 1] || 'Next FY')) + '</td><td>' + esc(m[2]) + '</td></tr>').join('');
-        return '<details class="camp"' + (i === 0 ? ' open' : '') + '><summary><span class="rtop"><span class="pill ' + (c.tier === 'Tier 1 launch' ? 'burst' : c.tier === 'Always-on' ? 'on' : 'both') + '">' + esc(c.tier) + '</span><span class="note">' + esc(c.status || 'Planning') + ' · owner ' + esc(c.owner || '–') + '</span></span>' +
+        const L = Math.round(num(c.launch)) || 1, src = S.campaigns[i], custom = Array.isArray(src.msPlan);
+        const opts = (o) => Array.from({ length: 19 }, (_, k) => k - 12).map((v) => '<option value="' + v + '"' + (v === o ? ' selected' : '') + '>' + msWhen(v) + '</option>').join('');
+        const ms = c.ms.map((m, j) => { const o = m[1] - L; return '<tr><td><input type="text" data-ms="' + i + '-' + j + '-0" value="' + esc(m[0]) + '" aria-label="Milestone"></td><td><select data-ms="' + i + '-' + j + '-1" aria-label="When">' + opts(o) + '</select></td>' +
+          '<td>' + (m[1] < 1 ? '<span class="pill burst">Before plan start</span>' : esc(P.labels[m[1] - 1] || 'Next FY')) + '</td><td><input type="text" data-ms="' + i + '-' + j + '-2" value="' + esc(m[2]) + '" aria-label="Owner"></td>' +
+          '<td><button type="button" class="linkbtn" data-ms-del="' + i + '-' + j + '" aria-label="Remove ' + esc(m[0]) + '">Remove</button></td></tr>'; }).join('');
+        const msNote = custom ? 'You edited these milestones. They move with the launch month.' : 'Worked back from launch using best-practice lead times for a ' + esc(c.tier || 'Tier 2 launch') + ' (' + (c.tier === 'Tier 1 launch' ? 'brief 4 months out, messaging 3, creative and paid brief 2, enablement 1, retro 3 months after' : c.tier === 'Always-on' ? 'brief 2 months out, messaging, creative and enablement 1, retro each quarter' : 'brief 3 months out, messaging 2, creative, paid brief and enablement 1, retro 2 months after') + '). Edit any row to match how your team works.';
+        return '<details class="camp" data-camp="' + i + '"' + (i === campOpen ? ' open' : '') + '><summary><span class="rtop"><span class="pill ' + (c.tier === 'Tier 1 launch' ? 'burst' : c.tier === 'Always-on' ? 'on' : 'both') + '">' + esc(c.tier) + '</span><span class="note">' + esc(c.status || 'Planning') + ' · owner ' + esc(c.owner || '–') + '</span></span>' +
           '<b class="rname">' + esc(c.name || 'Untitled campaign') + '</b><span class="note">' + money(c.pipe) + ' pipeline · ' + fmtInt(c.mql) + ' MQLs · ' + money(c.cost) + ' budget · ' + pct(c.w * 100) + ' of the plan</span>' + timeline(c, P, i) + '</summary>' +
           '<div class="rbody"><div><h4>Theme</h4><p>' + (esc(c.theme) || '<span class="note">–</span>') + '</p></div><div><h4>Hero offer</h4><p>' + (esc(c.offer) || '<span class="note">–</span>') + '</p></div>' +
           '<div><h4>Audience</h4><p>' + (esc(c.audience) || '<span class="note">–</span>') + '</p></div><div><h4>Product</h4><p>' + (esc(c.product) || '<span class="note">–</span>') + '</p></div>' +
           '<div><h4>Programs</h4><p>' + (c.chans.map((x) => esc(x.name)).join(', ') || '<span class="note">None matched</span>') + '</p></div>' +
-          '<div class="wide"><h4>Milestones</h4><div class="out"><table class="t"><thead><tr><th>Milestone</th><th>When</th><th>Owner</th></tr></thead><tbody>' + ms + '</tbody></table></div></div></div></details>';
+          '<div class="wide"><h4>Milestones</h4><p class="note">' + msNote + '</p><div class="out"><table class="t msed"><thead><tr><th>Milestone</th><th>Timing</th><th>Month</th><th>Owner</th><th></th></tr></thead><tbody>' + ms + '</tbody></table></div>' +
+          '<div class="btns"><button type="button" class="btn" data-ms-add="' + i + '">Add milestone</button>' + (custom ? '<button type="button" class="linkbtn" data-ms-reset="' + i + '">Reset to best practice</button>' : '') + '</div></div></div></details>';
       }).join('');
       const exp = P.camps.map((c) => '<tr><td>' + esc(c.name) + '</td><td>' + esc(c.tier) + '</td><td>' + esc(c.theme) + '</td><td>' + esc(c.offer) + '</td><td>' + esc(c.audience) + '</td><td>' + (P.labels[Math.round(num(c.launch)) - 1] || '') + '</td><td>' + money(c.pipe) + '</td><td>' + fmtInt(c.mql) + '</td><td>' + money(c.cost) + '</td><td>' + esc(c.owner) + '</td></tr>').join('');
-      return '<div><h2>Campaigns</h2><p class="lead">The plan as campaigns, not just channels. Each has a theme, a hero offer, an audience, its share of the number, the programs that carry it, and milestones worked back from launch. Open a campaign for its plan.</p></div>' +
+      return '<div><h2>Campaigns</h2><p class="lead">The plan as campaigns, not just channels. Each has a theme, a hero offer, an audience, its share of the number, the programs that carry it, and milestones worked back from launch using best-practice lead times for its tier, which you can edit. Open a campaign for its plan.</p></div>' +
         (ch.length ? '<div class="box"><h3>Campaign checks</h3><div class="health">' + ch.map(([k, t]) => hp(k, k === 'fix' ? 'Fix' : 'Watch') + '<span>' + t + '</span>').join('') + '</div></div>' : '') +
         '<div class="risks">' + (cards || '<p class="note">No campaigns yet. Add them in the left pane, under Campaigns.</p>') + '</div>' +
         '<table class="t" data-export hidden><thead><tr><th>Campaign</th><th>Tier</th><th>Theme</th><th>Hero offer</th><th>Audience</th><th>Launch</th><th>Pipeline</th><th>MQLs</th><th>Budget</th><th>Owner</th></tr></thead><tbody>' + exp + '</tbody></table>';
@@ -1981,6 +2002,23 @@
       const row = b.closest('tr').nextElementSibling;
       if (row && row.classList.contains('why')) { row.hidden = !row.hidden; b.setAttribute('aria-expanded', String(!row.hidden)); }
     });
+    // editable milestones: the first edit copies the best-practice list into the campaign, then changes stick
+    const msRows = (i) => { const c = S.campaigns[i], L = Math.round(num(c.launch)) || 1; if (!Array.isArray(c.msPlan)) c.msPlan = milestones(c).map((m) => [m[0], m[1] - L, m[2], m[3]]); return c.msPlan; };
+    const msDone = (i) => { campOpen = i; save(); render(); };
+    $('panel').addEventListener('change', (e) => {
+      const d = e.target.dataset.ms; if (!d) return;
+      const [i, j, k] = d.split('-').map(Number), r = msRows(i)[j]; if (!r) return;
+      r[k] = k === 1 ? Math.round(num(e.target.value)) : e.target.value.trim();
+      if (k === 0) r[3] = r[0];
+      msDone(i);
+    });
+    $('panel').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-ms-add],[data-ms-del],[data-ms-reset]'); if (!b) return;
+      if (b.dataset.msAdd != null) { const i = +b.dataset.msAdd; msRows(i).push(['New milestone', -1, '', 'New milestone']); msDone(i); }
+      else if (b.dataset.msDel != null) { const [i, j] = b.dataset.msDel.split('-').map(Number); msRows(i).splice(j, 1); msDone(i); }
+      else { const i = +b.dataset.msReset; delete S.campaigns[i].msPlan; msDone(i); toast('Milestones reset to best practice'); }
+    });
+    $('panel').addEventListener('toggle', (e) => { const d = e.target; if (d.matches && d.matches('details.camp') && d.open) campOpen = +d.dataset.camp; }, true);
     $('panel').addEventListener('click', (e) => {
       const b = e.target.closest('button[data-tl]'); if (!b) return;
       e.preventDefault();
