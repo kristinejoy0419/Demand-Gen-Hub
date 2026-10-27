@@ -410,16 +410,31 @@
         '<div class="box"><h3>MQLs by month</h3><p class="note">Always-on programs run flat; burst programs follow launch moments (marked).</p>' + monthChart(P) + '</div>';
     },
     funnel(P) {
-      const rows = P.segs.map((s) => '<tr><td>' + esc(s.name) + '</td><td class="n">' + pct(s.w * 100) + '</td><td class="n">' + money(s.pipe) + '</td><td class="n">' + money(s.acv) + '</td><td class="n">' + fmtInt(s.sqo) + '</td><td class="n">' + fmtInt(s.mql) + '</td><td class="n">' + fmtInt(s.leads) + '</td><td class="n">' + money(s.bookings) + '</td></tr>').join('');
+      const rows = P.segs.map((s, i) => '<tr><td>' + dl(esc(s.name)) + '</td><td class="n">' + pct(s.w * 100) + '</td><td class="n">' + money(s.pipe) + '</td><td class="n">' + money(s.acv) + '</td><td class="n">' + fmtInt(s.sqo) + '</td><td class="n">' + fmtInt(s.mql) + '</td><td class="n">' + fmtInt(s.leads) + '</td><td class="n">' + money(s.bookings) + '</td></tr>' + why(8, [
+        ['Pipeline', money(P.goal) + ' target × ' + pct(s.w * 100) + ' segment share', money(s.pipe)],
+        ['SQOs', money(s.pipe) + ' pipeline ÷ ' + money(s.acv) + ' average deal', fmtInt(s.sqo)],
+        ['MQLs', fmtInt(s.sqo) + ' SQOs ÷ ' + pct(num(S.segments[i].mqlSqo)) + ' MQL → SQO rate', fmtInt(s.mql)],
+        ['Leads', fmtInt(s.mql) + ' MQLs ÷ ' + pct(P.r1 * 100) + ' lead → MQL rate', fmtInt(s.leads)],
+        ['Bookings', money(s.pipe) + ' pipeline × ' + pct(P.r3 * 100) + ' SQO → closed-won rate', money(s.bookings)]
+      ], 'Change the share, deal size and MQL → SQO rate under Segments, and the other rates under Pipeline goal & funnel.')).join('');
       const t = P.tot;
-      return '<div><h2>Funnel by segment</h2><p class="lead">Each segment has its own deal size and MQL-to-SQO rate, so the volume needed differs a lot. Smaller deals need far more MQLs per dollar of pipeline.</p></div>' +
+      return '<div><h2>Funnel by segment</h2><p class="lead">Each segment has its own deal size and MQL-to-SQO rate, so the volume needed differs a lot. Smaller deals need far more MQLs per dollar of pipeline. Tap a segment to see how its numbers are built.</p></div>' +
         '<div class="out"><table class="t" data-export><thead><tr><th>Segment</th><th class="n">Share</th><th class="n">Pipeline</th><th class="n">Avg deal</th><th class="n">SQOs</th><th class="n">MQLs</th><th class="n">Leads</th><th class="n">Bookings</th></tr></thead><tbody>' + rows +
         '</tbody><tfoot><tr><td>Total</td><td class="n">100%</td><td class="n">' + money(t.pipe) + '</td><td class="n">' + money(t.sqo ? t.pipe / t.sqo : 0) + '</td><td class="n">' + fmtInt(t.sqo) + '</td><td class="n">' + fmtInt(t.mql) + '</td><td class="n">' + fmtInt(t.leads) + '</td><td class="n">' + money(t.bookings) + '</td></tr></tfoot></table></div>' +
         '<p class="note">Sales cycle: ' + fmtInt(num(S.cycle)) + ' days, so pipeline created after month ' + Math.max(1, 12 - Math.round(num(S.cycle) / 30)) + ' mostly closes next fiscal year.</p>';
     },
     regions(P) {
       const R = P.roll;
-      const rows = P.regions.map((r) => '<tr><td>' + esc(r.name) + '</td><td>' + statusPill(r.status) + '</td><td class="n">' + money(r.pipe) + '</td><td class="n">' + fmtInt(r.mql) + '</td><td class="n">' + fmtInt(r.fromHq) + '</td><td class="n">' + fmtInt(r.owes) + '</td><td class="n">' + fmtInt(r.committed) + '</td><td class="n">' + money(r.spend) + '</td><td class="n">' + coverCell(r.coverage) + '</td><td class="n">' + fmtInt(r.gap) + '</td></tr>').join('');
+      const hqMql = P.channels.filter((c) => c.runBy !== 'Region').reduce((a, c) => a + c.mql, 0), regMql = P.channels.filter((c) => c.runBy === 'Region').reduce((a, c) => a + c.mql, 0);
+      const rows = P.regions.map((r) => '<tr><td>' + dl(esc(r.name)) + '</td><td>' + statusPill(r.status) + '</td><td class="n">' + money(r.pipe) + '</td><td class="n">' + fmtInt(r.mql) + '</td><td class="n">' + fmtInt(r.fromHq) + '</td><td class="n">' + fmtInt(r.owes) + '</td><td class="n">' + fmtInt(r.committed) + '</td><td class="n">' + money(r.spend) + '</td><td class="n">' + coverCell(r.coverage) + '</td><td class="n">' + fmtInt(r.gap) + '</td></tr>' + why(10, [
+        ['Pipeline', money(P.tot.pipe) + ' × ' + pct(r.w * 100) + ' region share', money(r.pipe)],
+        ['MQL target', fmtInt(P.tot.mql) + ' MQLs × ' + pct(r.w * 100), fmtInt(r.mql)],
+        ['From HQ programs', fmtInt(hqMql) + ' MQLs from programs HQ runs or shares × ' + pct(r.w * 100), fmtInt(r.fromHq)],
+        ['Region owes', fmtInt(regMql) + ' MQLs from region-run programs × ' + pct(r.w * 100), fmtInt(r.owes)],
+        ['Committed', (r.plan.programs || []).map((x) => esc(x.name || 'Untitled') + ' ' + fmtInt(num(x.mql))).join(' + ') || 'No programs entered yet', fmtInt(r.committed)],
+        ['Coverage', fmtInt(r.committed) + ' committed ÷ ' + fmtInt(r.owes) + ' owed', coverCell(r.coverage)],
+        ['Gap', fmtInt(r.owes) + ' owed − ' + fmtInt(r.committed) + ' committed', fmtInt(r.gap)]
+      ], 'The region enters its programs in the left pane, under Regional plans.')).join('');
       const hq = P.channels.filter((c) => c.runBy !== 'Region').map((c) => esc(c.name)).join(', ') || 'None';
       const own = P.channels.filter((c) => c.runBy === 'Region').map((c) => esc(c.name)).join(', ') || 'None';
       const sections = P.regions.map((r) => {
@@ -432,7 +447,7 @@
           (r.plan.adapt ? '<div><b>Adapting locally</b> ' + esc(r.plan.adapt) + '</div>' : '') +
           '<div class="' + (r.gap > 0.5 ? 'gap' : 'ok') + '">' + (r.gap > 0.5 ? 'Gap: ' + fmtInt(r.gap) + ' MQLs' : 'Covered') + ' · ' + coverCell(r.coverage) + ' coverage</div></div>';
       }).join('');
-      return '<div><h2>Regional plans</h2><p class="lead">HQ owns the strategy, message, platforms and measurement. Each region owns its slice of the number and enters its own programs in the left pane, under Regional plans.</p></div>' +
+      return '<div><h2>Regional plans</h2><p class="lead">HQ owns the strategy, message, platforms and measurement. Each region owns its slice of the number and enters its own programs in the left pane, under Regional plans. Tap a region to see how its numbers are built.</p></div>' +
         '<div class="out"><table class="t" data-export><thead><tr><th>Region</th><th>Status</th><th class="n">Pipeline</th><th class="n">MQL target</th><th class="n">From HQ programs</th><th class="n">Region owes</th><th class="n">Committed</th><th class="n">Regional budget</th><th class="n">Coverage</th><th class="n">Gap</th></tr></thead><tbody>' + rows +
         '</tbody><tfoot><tr><td>Total</td><td>' + P.regions.filter((r) => r.status === 'Submitted').length + ' of ' + P.regions.length + ' submitted</td><td class="n">' + money(P.tot.pipe) + '</td><td class="n">' + fmtInt(R.mql) + '</td><td class="n">' + fmtInt(R.fromHq) + '</td><td class="n">' + fmtInt(R.owes) + '</td><td class="n">' + fmtInt(R.committed) + '</td><td class="n">' + money(R.spend) + '</td><td class="n">' + coverCell(R.coverage) + '</td><td class="n">' + fmtInt(R.gap) + '</td></tr></tfoot></table></div>' +
         '<p class="note">HQ programs: ' + hq + '. Region-run programs: ' + own + '. Change who runs a program in Channels &amp; programs.</p>' +
@@ -440,11 +455,18 @@
         '<div class="box"><h3>Keep consistent vs adapt</h3><div class="split"><div><b>Keep consistent</b><ul><li>Positioning and campaign theme</li><li>Target account criteria and ABM tiers</li><li>Brand and creative system</li><li>Funnel definitions and attribution</li></ul></div><div><b>Adapt by region</b><ul><li>Language and local proof points</li><li>Channel mix and offers</li><li>Timing around local seasons and holidays</li><li>Compliance, such as GDPR in EMEA</li></ul></div></div></div>';
     },
     quarters(P) {
-      const rows = P.quarters.map((q) => '<tr><td><b>' + q.name + '</b></td><td>' + q.months.map((i) => P.labels[i]).join(', ') + '</td><td class="n">' + fmtInt(q.mql) + '</td><td class="n">' + fmtInt(q.sqo) + '</td><td class="n">' + money(q.pipe) + '</td><td class="n">' + money(q.cost) + '</td><td>' + (esc(q.moments.join(' · ')) || '<span class="note">Always-on only</span>') + '</td></tr>').join('');
+      const spm = P.tot.mql ? P.tot.sqo / P.tot.mql : 0, ppm = P.tot.mql ? P.tot.pipe / P.tot.mql : 0;
+      const rows = P.quarters.map((q) => '<tr><td>' + dl('<b>' + q.name + '</b>') + '</td><td>' + q.months.map((i) => P.labels[i]).join(', ') + '</td><td class="n">' + fmtInt(q.mql) + '</td><td class="n">' + fmtInt(q.sqo) + '</td><td class="n">' + money(q.pipe) + '</td><td class="n">' + money(q.cost) + '</td><td>' + (esc(q.moments.join(' · ')) || '<span class="note">Always-on only</span>') + '</td></tr>' + why(7, [
+        ['MQLs', q.months.map((i) => P.labels[i] + ' ' + fmtInt(P.monthly[i])).join(' + '), fmtInt(q.mql)],
+        ['SQOs', fmtInt(q.mql) + ' MQLs × ' + pct(spm * 100) + ' blended MQL → SQO', fmtInt(q.sqo)],
+        ['Pipeline', fmtInt(q.mql) + ' MQLs × ' + money(ppm) + ' pipeline per MQL', money(q.pipe)],
+        ['Budget', q.months.map((i) => P.labels[i] + ' ' + money(P.monthlyCost[i])).join(' + '), money(q.cost)],
+        ['Biggest programs', P.channels.map((c) => [c.name, q.months.reduce((a, i) => a + c.byMonth[i], 0)]).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n, v]) => esc(n) + ' ' + fmtInt(v)).join(', '), '']
+      ], 'Months with a launch, event or season get a burst; always-on programs are spread evenly.')).join('');
       const tq = P.quarters.reduce((a, q) => ({ mql: a.mql + q.mql, sqo: a.sqo + q.sqo, pipe: a.pipe + q.pipe, cost: a.cost + q.cost }), { mql: 0, sqo: 0, pipe: 0, cost: 0 });
       const split = (items) => items.map((x) => '<tr><td>' + esc(x.name) + '</td>' + P.quarters.map((q) => '<td class="n">' + money(q.pipe * x.w) + '</td>').join('') + '<td class="n">' + money(P.tot.pipe * x.w) + '</td></tr>').join('');
       const qh = P.quarters.map((q) => '<th class="n">' + q.name + '</th>').join('');
-      return '<div><h2>Quarterly plan</h2><p class="lead">The plan as leadership and finance read it: what lands each quarter, and what it costs.</p></div>' +
+      return '<div><h2>Quarterly plan</h2><p class="lead">The plan as leadership and finance read it: what lands each quarter, and what it costs. Tap a quarter to see how it is built.</p></div>' +
         '<div class="out"><table class="t" data-export><thead><tr><th>Quarter</th><th>Months</th><th class="n">MQLs</th><th class="n">SQOs</th><th class="n">Pipeline</th><th class="n">Program budget</th><th>Moments</th></tr></thead><tbody>' + rows +
         '</tbody><tfoot><tr><td>Year</td><td></td><td class="n">' + fmtInt(tq.mql) + '</td><td class="n">' + fmtInt(tq.sqo) + '</td><td class="n">' + money(tq.pipe) + '</td><td class="n">' + money(tq.cost) + '</td><td></td></tr></tfoot></table></div>' +
         '<h3>Pipeline by region and quarter</h3><div class="out"><table class="t"><thead><tr><th>Region</th>' + qh + '<th class="n">Year</th></tr></thead><tbody>' + split(P.regions) + '</tbody></table></div>' +
@@ -479,10 +501,19 @@
     },
     channels(P) {
       const maxW = Math.max(0.001, ...P.channels.map((c) => c.w));
-      const rows = P.channels.map((c) => '<tr><td>' + esc(c.name) + '</td><td>' + esc(c.owner) + '</td><td>' + esc(c.stage) + '</td><td>' + motionPill(c.motion) + '</td><td class="n">' + pct(c.w * 100) + '</td><td><div class="meter"><i style="width:' + (c.w / maxW * 100).toFixed(1) + '%"></i></div></td><td class="n">' + money(c.pipe) + '</td><td class="n">' + fmtInt(c.mql) + '</td><td class="n">' + fmtInt(c.sqo) + '</td><td class="n">' + money(c.cost) + '</td><td class="n">' + (c.cost ? (c.pipe / c.cost).toFixed(1) + 'x' : '–') + '</td></tr>').join('');
+      const pts = P.channels.reduce((a, c) => a + Math.max(0, num(c.share)), 0), spm = P.tot.mql ? P.tot.sqo / P.tot.mql : 0;
+      const rows = P.channels.map((c) => '<tr><td>' + dl(esc(c.name)) + '</td><td>' + esc(c.owner) + '</td><td>' + esc(c.stage) + '</td><td>' + motionPill(c.motion) + '</td><td class="n">' + pct(c.w * 100) + '</td><td><div class="meter"><i style="width:' + (c.w / maxW * 100).toFixed(1) + '%"></i></div></td><td class="n">' + money(c.pipe) + '</td><td class="n">' + fmtInt(c.mql) + '</td><td class="n">' + fmtInt(c.sqo) + '</td><td class="n">' + money(c.cost) + '</td><td class="n">' + (c.cost ? (c.pipe / c.cost).toFixed(1) + 'x' : '–') + '</td></tr>' + why(11, [
+        ['Share', fmtInt(num(c.share)) + ' of ' + fmtInt(pts) + ' share points across programs that are on', pct(c.w * 100)],
+        ['Pipeline', money(P.tot.pipe) + ' × ' + pct(c.w * 100), money(c.pipe)],
+        ['MQLs', fmtInt(P.tot.mql) + ' MQLs × ' + pct(c.w * 100), fmtInt(c.mql)],
+        ['SQOs', fmtInt(c.mql) + ' MQLs × ' + pct(spm * 100) + ' blended MQL → SQO', fmtInt(c.sqo)],
+        ['Budget', fmtInt(c.mql) + ' MQLs × ' + money(num(c.cpm)) + ' per MQL', money(c.cost)],
+        ['Pipe : spend', money(c.pipe) + ' ÷ ' + money(c.cost), c.cost ? (c.pipe / c.cost).toFixed(1) + 'x' : '–'],
+        ['Timing', c.motion === 'Always-on' ? 'Spread evenly across the year' : c.motion === 'Burst' ? 'Concentrated in launch, event and season months' : '60% spread evenly, 40% in launch, event and season months', '']
+      ], 'Change share, cost per MQL, motion and who runs it under Channels & programs.')).join('');
       const paid = P.channels.find((c) => c.owner === 'Paid (shared svc)');
       const paidShare = P.channels.filter((c) => c.owner === 'Paid (shared svc)').reduce((s, c) => s + c.w, 0);
-      return '<div><h2>Channel mix</h2><p class="lead">Every program ladders up to one pipeline number. Paid media is ' + pct(paidShare * 100) + ' of sourced pipeline' + (paid ? '; the rest comes from owned, earned, partner, sales and product programs.' : '.') + '</p></div>' +
+      return '<div><h2>Channel mix</h2><p class="lead">Every program ladders up to one pipeline number. Paid media is ' + pct(paidShare * 100) + ' of sourced pipeline' + (paid ? '; the rest comes from owned, earned, partner, sales and product programs.' : '.') + ' Tap a program to see how its numbers are built.</p></div>' +
         '<div class="out"><table class="t" data-export><thead><tr><th>Program</th><th>Owner</th><th>Stage</th><th>Motion</th><th class="n">Share</th><th></th><th class="n">Pipeline</th><th class="n">MQLs</th><th class="n">SQOs</th><th class="n">Budget</th><th class="n">Pipe : spend</th></tr></thead><tbody>' + rows +
         '</tbody><tfoot><tr><td>Total</td><td></td><td></td><td></td><td class="n">100%</td><td></td><td class="n">' + money(P.tot.pipe) + '</td><td class="n">' + fmtInt(P.tot.mql) + '</td><td class="n">' + fmtInt(P.tot.sqo) + '</td><td class="n">' + money(P.budget) + '</td><td class="n">' + (P.budget ? (P.tot.pipe / P.budget).toFixed(1) + 'x' : '–') + '</td></tr></tfoot></table></div>';
     },
@@ -542,6 +573,13 @@
   };
 
   function statusPill(st) { return '<span class="pill ' + (st === 'Submitted' ? 'on' : st === 'Draft' ? 'both' : 'burst') + '">' + esc(st) + '</span>'; }
+  // tappable row label and the hidden row that shows how the numbers are built
+  function dl(label) { return '<button class="dl" type="button" aria-expanded="false">' + label + '</button>'; }
+  function why(cols, lines, foot) {
+    return '<tr class="why" hidden><td colspan="' + cols + '"><div class="whybox"><b>How this is built</b><dl>' +
+      lines.map(([k, f, v]) => '<dt>' + k + '</dt><dd>' + f + (v !== '' ? ' = <b>' + v + '</b>' : '') + '</dd>').join('') +
+      '</dl>' + (foot ? '<p class="note">' + esc(foot) + '</p>' : '') + '</div></td></tr>';
+  }
   function riskPill(st) { return '<span class="pill ' + (st === 'Triggered' ? 'burst' : st === 'Watching' ? 'both' : 'on') + '">' + esc(st) + '</span>'; }
   function likePill(l) { return '<span class="pill ' + (l === 'High' ? 'burst' : l === 'Medium' ? 'both' : 'on') + '">' + esc(l || '–') + '</span>'; }
   function coverCell(c) { return Math.round(Math.min(c, 9.99) * 100) + '%'; }
@@ -677,7 +715,7 @@
   function tableData() {
     const t = $('panel').querySelector('table[data-export]') || $('panel').querySelector('table');
     if (!t) return null;
-    return Array.from(t.rows).map((r) => Array.from(r.cells).map((c) => c.innerText.replace(/\s+/g, ' ').trim()));
+    return Array.from(t.rows).filter((r) => !r.classList.contains('why')).map((r) => Array.from(r.cells).map((c) => c.innerText.replace(/\s+/g, ' ').trim()));
   }
   async function copyText(text, msg) {
     try { await navigator.clipboard.writeText(text); toast(msg); }
@@ -694,6 +732,11 @@
     $('btn-blank').onclick = () => { S = blank(); save(); bindInputs(); $('example-pill').hidden = true; render(); toast('Started a blank plan'); };
     $('btn-rp-copy').onclick = () => { if (rpSel) copyText(planBlock(rpSel), rpSel + ' plan copied. Send it to HQ'); };
     $('btn-rp-import').onclick = () => { const v = $('in-rp-paste').value.trim(); if (v) importPlan(v); else toast('Paste a plan first'); };
+    $('panel').addEventListener('click', (e) => {
+      const b = e.target.closest('button.dl'); if (!b) return;
+      const row = b.closest('tr').nextElementSibling;
+      if (row && row.classList.contains('why')) { row.hidden = !row.hidden; b.setAttribute('aria-expanded', String(!row.hidden)); }
+    });
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-brief') copyText($('brief-text').innerText, 'Brief copied'); });
     const rail = $('rail'), scrim = $('scrim');
     const setRail = (open) => { rail.classList.toggle('open', open); scrim.classList.toggle('open', open); $('btn-open-rail').setAttribute('aria-expanded', String(open)); };

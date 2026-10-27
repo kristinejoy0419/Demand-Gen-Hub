@@ -41,6 +41,8 @@ It's a static site with no build step.
 | Measurement | KPIs with targets, review cadence, owners and sources (including SEO and AEO/GEO), plus the operating rhythm with RevOps |
 | Risks & contingencies | Counts by status and pipeline at risk, then one card per risk. Open a card to see its early warning signal, trigger, contingency plan and prevention. Triggered risks open first |
 
+Tap a row in Funnel by segment, Regional plans, Channel mix or Quarterly plan to see how its numbers are built, step by step.
+
 Copy any tab's table to paste into Sheets, or copy it as CSV.
 
 ## How the math works

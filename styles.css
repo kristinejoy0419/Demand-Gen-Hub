@@ -185,3 +185,12 @@ details.risk[open] .rname::after{content:" ▾"}
 details.risk.triggered .rbody .act{background:var(--over-soft)}
 details.risk.triggered .rbody .act h4{color:var(--over)}
 @media (max-width:720px){.tiles{grid-template-columns:1fr 1fr}.tile b{font-size:24px}}
+
+button.dl{font:inherit;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-align:left;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
+button.dl::after{content:" ▸";color:var(--faint);text-decoration:none;display:inline-block;margin-left:2px}
+button.dl[aria-expanded=true]::after{content:" ▾"}
+tr.why>td{background:var(--sunk);padding:0}
+.whybox{padding:12px 14px;display:flex;flex-direction:column;gap:8px;position:sticky;left:0;max-width:min(720px,calc(100vw - 64px))}
+.whybox dl{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:13px}
+.whybox dt{font-weight:600;color:var(--muted)}
+.whybox dd{margin:0;white-space:normal}
