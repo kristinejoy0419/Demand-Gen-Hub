@@ -27,8 +27,9 @@
   </header>
 
   <div class="grid">
-    <aside class="rail" id="rail" aria-label="Plan inputs">
-      <div class="rail-head"><h3>Plan inputs</h3><button class="btn" type="button" id="btn-close-rail">Done</button></div>
+    <aside class="rail" id="rail" aria-label="Planning assumptions">
+      <div class="rail-head"><h3>Planning assumptions</h3><button class="btn" type="button" id="btn-close-rail">Done</button></div>
+      <div class="rail-intro"><b>Planning assumptions</b><span>Set these once when you build the plan: the goal, funnel, audience, programs and regions. Every number in the hub is built from them.</span></div>
       <div class="rail-group">Strategy</div>
       <details class="card" open>
         <summary><h3>Campaign &amp; brief</h3><small>what we're launching</small></summary>
@@ -167,26 +168,7 @@
         </div>
       </details>
 
-      <div class="rail-group">Execution</div>
-      <details class="card">
-        <summary><h3>Risks &amp; contingencies</h3><small>signal · trigger · plan</small></summary>
-        <div class="body"><div id="ed-risks"></div></div>
-      </details>
-
-      <details class="card">
-        <summary><h3>Actuals</h3><small>monthly, for pacing</small></summary>
-        <div class="body"><div id="ed-actuals"></div><p class="hint">Enter each closed month from the CRM. Pacing compares them to plan and forecasts the year.</p></div>
-      </details>
-
-      <details class="card">
-        <summary><h3>Team &amp; SLAs</h3><small>capacity · SLA · escalation</small></summary>
-        <div class="body"><div id="ed-team"></div><p class="hint">"Can run at once" is how many programs, unfinished assets and campaigns the team can carry together.</p></div>
-      </details>
-
-      <details class="card">
-        <summary><h3>Asks of leadership</h3><small>decisions needed to deliver</small></summary>
-        <div class="body"><div id="ed-asks"></div></div>
-      </details>
+      <div class="rail-note"><b>Weekly updates don't go here.</b> Actuals, risk status, team load and asks live in the <button class="linkbtn" type="button" data-goexec="pacing">Execution tab</button>, each next to what it drives.</div>
 
       <div class="btns">
         <button class="btn" id="btn-reset" type="button">Reload example</button>
@@ -213,10 +195,29 @@
         </details>
       </div>
       <div class="panel" id="panel"></div>
+    <div id="upd-holder" hidden>
+      <details class="card upd" id="upd-risks">
+        <summary><h3><span class="updtag">Weekly update</span>Risks &amp; contingencies</h3><small>signal · trigger · plan</small></summary>
+        <div class="body"><div id="ed-risks"></div><p class="hint">Risks tied to a plan number set their own status. Update the rest in your weekly review.</p></div>
+      </details>
+      <details class="card upd" id="upd-actuals">
+        <summary><h3><span class="updtag">Weekly update</span>Actuals</h3><small>enter each month as it closes</small></summary>
+        <div class="body"><div id="ed-actuals"></div><p class="hint">Enter each closed month from the CRM. Pacing compares them to plan and forecasts the year.</p></div>
+      </details>
+      <details class="card upd" id="upd-team">
+        <summary><h3><span class="updtag">Weekly update</span>Team &amp; SLAs</h3><small>capacity · SLA · escalation</small></summary>
+        <div class="body"><div id="ed-team"></div><p class="hint">"Can run at once" is how many programs, unfinished assets and campaigns the team can carry together.</p></div>
+      </details>
+      <details class="card upd" id="upd-asks">
+        <summary><h3><span class="updtag">Weekly update</span>Asks of leadership</h3><small>decisions needed to deliver</small></summary>
+        <div class="body"><div id="ed-asks"></div></div>
+      </details>
+    </div>
+
     </section>
   </div>
 </div>
-<button class="btn primary inputs-btn" type="button" id="btn-open-rail" aria-controls="rail">Edit inputs</button>
+<button class="btn primary inputs-btn" type="button" id="btn-open-rail" aria-controls="rail">Planning assumptions</button>
 <div class="scrim" id="scrim"></div>
 <div class="toast" id="toast" hidden></div>
 <script src="app.js"></script>

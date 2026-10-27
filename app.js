@@ -636,10 +636,10 @@
 
   /* ---------- tabs ---------- */
   const TAB_GROUPS = [
-    ['Overview', [['onepage', 'Plan on a page'], ['summary', 'Summary'], ['pacing', 'Pacing'], ['checks', 'Check the math']]],
+    ['Overview', [['onepage', 'Plan on a page'], ['summary', 'Summary'], ['checks', 'Check the math']]],
     ['Plan', [['campaigns', 'Campaigns'], ['quarters', 'Quarterly plan'], ['funnel', 'Funnel & motion'], ['channels', 'Channel mix'], ['calendar', 'Calendar']]],
     ['Regions & accounts', [['regions', 'Regional plans'], ['committee', 'Buying committee & ABM']]],
-    ['Execution', [['owners', 'Team & owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['scenarios', 'Scenarios & asks'], ['risks', 'Risks']]]
+    ['Execution', [['pacing', 'Pacing'], ['owners', 'Team & owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['scenarios', 'Scenarios & asks'], ['risks', 'Risks']]]
   ];
   const TABS = TAB_GROUPS.flatMap((g) => g[1]);
   function renderTabs() {
@@ -660,9 +660,18 @@
   }
   const lastIn = {};
 
+  // weekly update cards live in the Execution tabs they drive; they move in and out of the panel so edits keep focus
+  const UPD = { pacing: 'actuals', risks: 'risks', owners: 'team', scenarios: 'asks' };
   function render() {
     const P = extend(compute());
+    const a = document.activeElement, sel = a && 'selectionStart' in a ? [a.selectionStart, a.selectionEnd] : null;
+    document.querySelectorAll('#panel .card.upd').forEach((c) => $('upd-holder').appendChild(c));
     $('panel').innerHTML = (VIEWS[tab] || VIEWS2[tab])(P);
+    if (UPD[tab]) {
+      const card = $('upd-' + UPD[tab]), first = $('panel').firstElementChild;
+      if (first) first.after(card); else $('panel').prepend(card);
+      if (a && card.contains(a) && document.activeElement !== a) { a.focus({ preventScroll: true }); if (sel) try { a.setSelectionRange(sel[0], sel[1]); } catch (e) { /* not a text field */ } }
+    }
     if (tab === 'owners') bindRaci();
   }
 
@@ -777,7 +786,7 @@
           '<div class="act"><h4>' + (st === 'Triggered' ? 'Do now' : 'If triggered') + '</h4><p>' + (esc(r.contingency) || '<span class="note">Add the contingency plan</span>') + '</p></div>' +
           '<div><h4>Prevent now</h4><p>' + (esc(r.mitigation) || '<span class="note">–</span>') + '</p></div>' +
           '</div></details>';
-      }).join('') || '<p class="note">No risks yet. Add them in the left pane, under Risks &amp; contingencies.</p>';
+      }).join('') || '<p class="note">No risks yet. Add them in the Weekly update panel above.</p>';
       const exp = list.map((r) => '<tr><td>' + esc(r.risk) + '</td><td>' + esc(r.status) + '</td><td>' + (r.auto ? 'Tracked: ' + esc(r.link) : esc(r.likelihood)) + '</td><td>' + money(num(r.impact)) + '</td><td>' + esc(r.owner) + '</td><td>' + esc(r.signal) + '</td><td>' + esc(r.trigger) + '</td><td>' + esc(r.contingency) + '</td><td>' + esc(r.mitigation) + '</td></tr>').join('');
       return '<div><h2>Risks &amp; contingencies</h2><p class="lead">Each risk has an early warning signal, the threshold that triggers it, and the plan we run when it does. Risks tied to a plan number (regional coverage, SDR capacity, MQL → SQO, pacing) set their own status and pipeline at risk from the live plan; the rest are set by their owner. Open a risk to see what it is based on and its plan.</p></div>' +
         '<div class="tiles"><div class="tile' + (count('Triggered') ? ' alert' : '') + '"><span>Triggered</span><b>' + count('Triggered') + '</b><span>contingency running</span></div>' +
@@ -1013,7 +1022,7 @@
     return /region/i.test(t) ? 'Regional coverage' : /SDR/i.test(t) ? 'SDR capacity' : /SQO|conversion/i.test(t) ? 'MQL → SQO' : /pac(e|ing)/i.test(t) ? 'Pacing' : 'Owner sets it';
   }
   function liveRisk(r, P) {
-    const link = riskLink(r), own = Object.assign({}, r, { link, auto: false, basis: 'Status, likelihood and pipeline at risk are set by the owner in the left pane, under Risks & contingencies.' });
+    const link = riskLink(r), own = Object.assign({}, r, { link, auto: false, basis: 'Status, likelihood and pipeline at risk are set by the owner in the Weekly update panel on this tab.' });
     const ppm = P.ppm, pps = P.tot.sqo ? P.tot.pipe / P.tot.sqo : 0;
     const auto = (status, impact, basis) => Object.assign({}, r, { link, auto: true, status, impact: Math.max(0, impact), basis });
     if (link === 'Regional coverage') {
@@ -1031,14 +1040,14 @@
     }
     if (link === 'MQL → SQO') {
       const c = P.pace.cum;
-      if (!P.pace.asOf || !c.mql.act) return Object.assign(own, { basis: 'Tracked from actuals once you enter them in the left pane, under Actuals. Until then the owner sets the status.' });
+      if (!P.pace.asOf || !c.mql.act) return Object.assign(own, { basis: 'Tracked from actuals once you enter them on Execution → Pacing. Until then the owner sets the status.' });
       const act = c.sqo.act / c.mql.act, ratio = P.spm ? act / P.spm : 1, rest = P.tot.mql - c.mql.act;
       const lost = Math.max(0, (P.spm - act) * Math.max(0, rest) * pps);
       return auto(ratio < 0.85 ? 'Triggered' : ratio < 0.95 ? 'Watching' : 'On track', lost,
         'Actuals through ' + P.labels[P.pace.asOf - 1] + ': ' + pct(act * 100) + ' MQL → SQO vs ' + pct(P.spm * 100) + ' planned (' + Math.round(ratio * 100) + '% of plan). At that rate the remaining ' + fmtInt(rest) + ' MQLs make ' + money(lost) + ' less pipeline. Watching under 95% of plan, Triggered under 85%.');
     }
     if (link === 'Pacing') {
-      if (!P.pace.asOf) return Object.assign(own, { basis: 'Tracked from actuals once you enter them in the left pane, under Actuals.' });
+      if (!P.pace.asOf) return Object.assign(own, { basis: 'Tracked from actuals once you enter them on Execution → Pacing.' });
       const [k] = paceStatus(P.pace.pace), gap = P.tot.pipe - P.pace.forecast;
       return auto(k === 'fix' ? 'Triggered' : k === 'watch' ? 'Watching' : 'On track', gap,
         'Pipeline through ' + P.labels[P.pace.asOf - 1] + ' is at ' + Math.round(P.pace.pace * 100) + '% of plan, so the year lands at ' + money(P.pace.forecast) + ' against ' + money(P.tot.pipe) + '.');
@@ -1172,7 +1181,7 @@
       const okIn = inputs.filter((x) => x[0] !== 'ok').length;
       const okTies = ties.filter((t) => t[3]).length;
       const rows = ties.map(([w, a, b, ok, how]) => '<tr><td>' + esc(w) + '<div class="note">' + how + '</div></td><td class="n">' + a + '</td><td class="n">' + b + '</td><td>' + hp(ok ? 'ok' : 'fix', ok ? 'Ties' : 'Off') + '</td></tr>').join('');
-      return '<div><h2>Check the math</h2><p class="lead">Every number on the dashboard is built from the inputs in the left pane. This tab re-adds the totals a second way to prove they tie out, and flags inputs that look wrong. Tap any row label elsewhere in the hub to see how that number is built.</p></div>' +
+      return '<div><h2>Check the math</h2><p class="lead">Every number on the dashboard is built from the planning assumptions in the left pane and the weekly updates in Execution. This tab re-adds the totals a second way to prove they tie out, and flags inputs that look wrong. Tap any row label elsewhere in the hub to see how that number is built.</p></div>' +
         '<div class="tiles"><div class="tile' + (okTies < ties.length ? ' alert' : '') + '"><span>Totals that tie out</span><b>' + okTies + ' of ' + ties.length + '</b><span>within 0.5% rounding</span></div>' +
         '<div class="tile' + (okIn ? ' alert' : '') + '"><span>Inputs to check</span><b>' + okIn + '</b><span>' + (okIn ? 'listed below' : 'none flagged') + '</span></div></div>' +
         '<h3>Inputs to check</h3><div class="health">' + (inputs.length ? inputs.sort((a, b) => (a[0] === 'ok') - (b[0] === 'ok')).map(([k, t]) => hp(k, k === 'fix' ? 'Fix' : k === 'watch' ? 'Check' : 'OK') + '<span>' + t + '</span>').join('') : hp('ok', 'OK') + '<span>Nothing looks off.</span>') + '</div>' +
@@ -1230,7 +1239,7 @@
         '<td class="n">' + money(m.plan.pipe) + '</td>' + (m.act ? cell(m.act.pipe, m.plan.pipe, money) : '<td class="n">–</td>') + '<td class="n">' + money(m.plan.spend) + '</td>' + (m.act ? '<td class="n">' + money(m.act.spend) + '</td>' : '<td class="n">–</td>') + '</tr>').join('');
       const actConv = pc.cum.mql.act ? pc.cum.sqo.act / pc.cum.mql.act : 0;
       const acts = [];
-      if (!pc.asOf) acts.push(['watch', 'Add actuals in the left pane, under Actuals, to see pacing.']);
+      if (!pc.asOf) acts.push(['watch', 'Add actuals in the Weekly update panel above to see pacing.']);
       else {
         const gap = P.tot.pipe - pc.forecast;
         if (gap > 0.5) {
@@ -1241,7 +1250,7 @@
         if (pc.cum.spend.act > pc.cum.spend.plan * 1.05) acts.push(['watch', 'Spend is ' + money(pc.cum.spend.act - pc.cum.spend.plan) + ' ahead of plan to date.']);
         P.risks.filter((r) => r.status === 'Triggered').forEach((r) => acts.push(['fix', 'Triggered: ' + esc(r.risk) + '. ' + esc(r.contingency)]));
       }
-      return '<div><h2>Pacing</h2><p class="lead">Plan vs actual by month, a run-rate forecast for the year, and what to do about it. Enter actuals in the left pane each month, or paste them from the CRM report.</p></div>' +
+      return '<div><h2>Pacing</h2><p class="lead">Plan vs actual by month, a run-rate forecast for the year, and what to do about it. Enter actuals in the Weekly update panel each month, or paste them from the CRM report.</p></div>' +
         '<div class="tiles"><div class="tile' + (pk === 'fix' ? ' alert' : '') + '"><span>Pipeline to date' + (pc.asOf ? ' · through ' + P.labels[pc.asOf - 1] : '') + '</span><b>' + money(pc.cum.pipe.act) + '</b><span>of ' + money(pc.cum.pipe.plan) + ' planned · ' + (pc.asOf ? pl : 'no actuals') + '</span></div>' +
         '<div class="tile"><span>Run-rate forecast</span><b>' + money(pc.forecast) + '</b><span>vs ' + money(P.tot.pipe) + ' target</span></div>' +
         '<div class="tile"><span>MQLs to date</span><b>' + fmtInt(pc.cum.mql.act) + '</b><span>of ' + fmtInt(pc.cum.mql.plan) + ' planned</span></div>' +
@@ -1568,6 +1577,7 @@
     const newCheer = () => { cheerI = (cheerI + 1) % CHEERS.length; $('cheer-t').textContent = CHEERS[cheerI]; };
     $('cheer-t').textContent = CHEERS[cheerI];
     $('cheer-new').onclick = newCheer; $('spider').onclick = newCheer;
+    document.addEventListener('click', (e) => { const b = e.target.closest('[data-goexec]'); if (!b) return; tab = b.dataset.goexec; renderTabs(); render(); if (window.innerWidth < 900 && $('btn-close-rail')) $('btn-close-rail').click(); $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-print') window.print(); });
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-brief') copyText($('brief-text').innerText, 'Brief copied'); });
     const rail = $('rail'), scrim = $('scrim');

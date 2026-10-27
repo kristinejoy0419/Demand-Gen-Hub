@@ -11,9 +11,9 @@ It's a static site with no build step.
 - **Locally:** open `index.html` in a browser.
 - **GitHub Pages:** go to *Settings → Pages*, set *Source* to "Deploy from a branch", then choose `main` and `/ (root)`. The site will be served at `https://<user>.github.io/<repo>/`.
 
-## Inputs (left rail)
+## Planning assumptions (left pane)
 
-Grouped as Strategy, Targets, Audience, Programs, Regions and Execution.
+Set once when you build the plan, grouped as Strategy, Targets, Audience, Programs and Regions. Weekly updates (actuals, risks, team and SLAs, asks of leadership) live in the Execution tab, each next to the view it drives.
 
 - **Campaign & brief:** campaign name, fiscal year, products in scope and brief notes.
 - **Campaigns:** each campaign's tier (Tier 1 launch, Tier 2 launch, always-on, seasonal), status, theme, hero offer, audience, product, start, launch and end months, share of pipeline, programs and owner.
@@ -39,7 +39,7 @@ Grouped as Strategy, Targets, Audience, Programs, Regions and Execution.
 | --- | --- | --- |
 | Overview | Plan on a page | Pipeline vs last year, coverage of the sales need, budget, pacing, campaigns, what needs attention, pipeline by quarter, asks, budget scenarios and risks. Prints to one PDF |
 | | Summary | Headline numbers, plan health, product mix, last year and coverage checks, the reverse funnel and MQLs by month |
-| | Pacing | Plan vs actual by month, a run-rate forecast and what to do about a gap |
+| Execution | Pacing | Plan vs actual by month, a run-rate forecast and what to do about a gap |
 | Plan | Campaigns | One card per campaign with theme, hero offer, audience, programs, a 12-month timeline and milestones worked back from launch |
 | | Quarterly plan | MQLs, SQOs, pipeline and budget by quarter, by region and by segment |
 | | Funnel & motion | The funnel by segment, new logo vs expansion with PQL supply, and sourced vs influenced |
