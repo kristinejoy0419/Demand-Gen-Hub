@@ -2246,7 +2246,7 @@
   }
 
   /* ---------- boot ---------- */
-  try { const t = localStorage.getItem(STORE_KEY + ':tab'); if (t && TABS.some((x) => x[0] === t)) tab = t; } catch (e) { /* ignore */ }
+  // always open on Overview; a #tab= link (from a drafted email) can still point somewhere else
   // links from drafted emails open the tab they point to: #tab=regions
   const fromHash = () => { const m = location.hash.match(/tab=(\w+)/); if (m && TABS.some((x) => x[0] === m[1])) { tab = m[1]; return true; } return false; };
   fromHash();
