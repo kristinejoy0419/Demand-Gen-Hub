@@ -757,7 +757,7 @@
     ['segments', 'segments', 'Segments', () => off100(S.segments, 'share') ? 'segment shares add to ' + Math.round(sum(S.segments, 'share')) + '%, not 100%' : S.segments.some((s) => !(num(s.acv) > 0) || !(num(s.mqlSqo) > 0)) ? 'deal size and MQL → SQO rate for every segment' : ''],
     ['regions', 'regions', 'Regions', () => off100(S.regions, 'share') ? 'region shares add to ' + Math.round(sum(S.regions, 'share')) + '%, not 100%' : S.regions.some((r) => !r.lead) ? 'an owner for every region' : ''],
     ['committee', 'buying-committee', 'Buying committee', () => !S.personas.some((p) => p.role) ? 'the roles in the buying committee' : ''],
-    ['channels', 'channels-and-programs', 'Channels & programs', () => { const on = S.channels.filter((c) => c.on); return !on.length ? 'the programs you will run' : off100(on, 'share') ? 'program shares add to ' + Math.round(sum(on, 'share')) + '%, not 100%' : on.some((c) => !(num(c.cpm) > 0)) ? 'cost per MQL for every program' : ''; }],
+    ['channels', 'channels-and-programs', 'Channels & programs', () => { const on = S.channels.filter((c) => c.on); return !on.length ? 'the programs you will run' : on.some((c) => !(num(c.cpm) > 0)) ? 'cost per MQL for every program' : ''; }],
     ['moments', 'launch-moments', 'Launch moments', () => !S.moments.length ? 'launches, events or buying seasons' : ''],
     ['regional', 'regional-plans', 'Regional plans', () => { const n = S.regions.filter((r) => regionPlan(r.name).status === 'Not started').length; return n ? 'a plan from ' + n + ' more region' + (n === 1 ? '' : 's') : ''; }]
   ];
@@ -1551,6 +1551,8 @@
       tie('Products add up to total pipeline', sum(P.products, (x) => x.pipe), P.tot.pipe, money, 'Product mix.');
       // 2. inputs worth a second look
       const shares = [['Segment shares', S.segments, 'share'], ['Region shares', S.regions, 'share'], ['Channel shares (on)', S.channels.filter((c) => c.on), 'share'], ['Campaign shares', S.campaigns, 'share'], ['Product shares', S.products, 'share'], ['ABM tier shares', S.tiers, 'share']];
+      const offCh = S.channels.filter((c) => !c.on).length, onT = sumIn(S.channels.filter((c) => c.on), 'share');
+      if (offCh && Math.round(onT) !== 100) { shares.splice(2, 1); inputs.push(['ok', 'Programs that are on add to ' + fmtInt(onT) + '% with ' + offCh + ' turned off. They are rebalanced to 100%, which is expected when a plan doesn\'t run every program.']); }
       shares.forEach(([l, rows, k]) => { if (!rows.length) return; const t = sumIn(rows, k); inputs.push([Math.round(t) === 100 ? 'ok' : 'watch', l + ' add to ' + fmtInt(t) + '%' + (Math.round(t) === 100 ? '' : '. The dashboard rescales them to 100%, so every number built on them moves. Fix the inputs so what you typed is what you see.')]); });
       const r1 = num(S.r1), r3 = num(S.r3);
       if (r1 <= 0 || r1 > 100) inputs.push(['fix', 'Lead → MQL rate is ' + r1 + '%. It should be between 1 and 100.']);
