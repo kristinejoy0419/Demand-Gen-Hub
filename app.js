@@ -20,7 +20,7 @@
   function example() {
     return {
       isExample: true,
-      done: { 'ask|Approve $3.6M program budget, with 10% held back until the Q1 pacing review': true, 'ask|SLA with paid shared services: flights live 10 business days after brief, weekly pacing': true,
+      done: { 'ask|Approve $6.6M program budget, with 10% held back until the Q1 pacing review': true, 'ask|SLA with paid shared services: flights live 10 business days after brief, weekly pacing': true,
         'ask|Agree sourced vs influenced definitions and the PQL handoff': true, 'ms|Admin & governance add-on|Campaign brief': true },
       name: 'FY27 IT buyer expansion',
       fy: 'FY27',
@@ -31,7 +31,7 @@
       r1: 22, r3: 25, cycle: 120,
       sdrs: 5, sdrCap: 100,
       salesTarget: 35000000, coverage: 3, mktShare: 47,
-      lyPipe: 38000000, lyMql: 3450, lySqo: 560, lyBudget: 3100000,
+      lyPipe: 38000000, lyMql: 3450, lySqo: 560, lyBudget: 5600000,
       expShare: 35, expConv: 30, pqlPerMonth: 60, influenced: 120000000,
       campaigns: [
         { name: 'Governed AI for IT', tier: 'Tier 1 launch', product: 'AI agent suite for IT', theme: 'AI agents IT can say yes to', offer: 'Analyst report on governed AI agents', audience: 'CIO / Head of IT, IT admin / architect', start: 1, launch: 2, end: 6, share: 35, programs: 'webinar, paid, events, content, aeo, sdr', owner: 'Demand gen', status: 'In flight' },
@@ -40,8 +40,8 @@
         { name: 'Year-end consolidation', tier: 'Seasonal', product: 'Core work platform', theme: 'Consolidate tools before next year\'s budget locks', offer: 'Business case workshop', audience: 'COO / Ops leader, CIO / Head of IT', start: 9, launch: 11, end: 12, share: 10, programs: 'events, sdr, partner, email', owner: 'Field', status: 'Planning' }
       ],
       actuals: [
-        { month: 1, mql: 250, sqo: 45, pipe: 3400000, spend: 180000 },
-        { month: 2, mql: 505, sqo: 92, pipe: 6000000, spend: 520000 }
+        { month: 1, mql: 250, sqo: 45, pipe: 3400000, spend: 330000 },
+        { month: 2, mql: 505, sqo: 92, pipe: 6000000, spend: 960000 }
       ],
       team: [
         { fn: 'Demand gen', hc: 6, cap: 8, sla: 'Campaign brief to every team 12 weeks before launch', intake: 'Campaign brief + weekly campaign stand-up', escal: 'Head of Campaigns' },
@@ -53,7 +53,7 @@
         { fn: 'RevOps', hc: 2, cap: 3, sla: 'Pipeline dashboard refreshed by Monday 9am', intake: 'RevOps ticket', escal: 'Head of RevOps' }
       ],
       asks: [
-        { ask: 'Approve $3.6M program budget, with 10% held back until the Q1 pacing review', who: 'CMO + Finance', by: 1, why: 'Funds the plan while keeping room to move money to what converts' },
+        { ask: 'Approve $6.6M program budget, with 10% held back until the Q1 pacing review', who: 'CMO + Finance', by: 1, why: 'Funds the plan while keeping room to move money to what converts' },
         { ask: 'SLA with paid shared services: flights live 10 business days after brief, weekly pacing', who: 'Head of shared services', by: 1, why: 'Paid carries 20% of sourced pipeline but sits outside the team' },
         { ask: '2 more SDRs, or overflow routing, for launch months', who: 'Head of sales development', by: 2, why: 'MQLs exceed SDR capacity in Mar and Jun' },
         { ask: 'Decide who covers LATAM: HQ programs or a partner', who: 'CRO', by: 3, why: 'LATAM has no plan, owner or ABM play' },
@@ -106,16 +106,16 @@
         { tier: 'Tier 3 · 1:many', accounts: 2500, share: 25, play: 'Programmatic ABM, nurture tracks, in-product signals' }
       ],
       channels: [
-        { id: 'email', on: true, name: 'Email nurture & lifecycle', owner: 'Demand gen', kind: 'Owned', stage: 'Consider', motion: 'Always-on', runBy: 'HQ', share: 12, cpm: 150 },
-        { id: 'webinar', on: true, name: 'Webinars & virtual events', owner: 'Demand gen', kind: 'Owned', stage: 'Consider', motion: 'Both', runBy: 'Both', share: 14, cpm: 600 },
-        { id: 'events', on: true, name: 'Field & flagship events', owner: 'Field', kind: 'Owned', stage: 'Decide', motion: 'Burst', runBy: 'Region', share: 12, cpm: 2000 },
-        { id: 'content', on: true, name: 'Content & offers', owner: 'PMM', kind: 'Owned', stage: 'Aware', motion: 'Both', runBy: 'HQ', share: 8, cpm: 400 },
-        { id: 'seo', on: true, name: 'SEO (organic search)', owner: 'Demand gen', kind: 'Earned', stage: 'Aware', motion: 'Always-on', runBy: 'HQ', share: 5, cpm: 250 },
-        { id: 'aeo', on: true, name: 'AEO / GEO (AI answer engines)', owner: 'PMM', kind: 'Earned', stage: 'Aware', motion: 'Always-on', runBy: 'HQ', share: 3, cpm: 350 },
-        { id: 'paid', on: true, name: 'Paid media', owner: 'Paid (shared svc)', kind: 'Paid', stage: 'Aware', motion: 'Both', runBy: 'Both', share: 20, cpm: 1200 },
-        { id: 'partner', on: true, name: 'Partner marketing', owner: 'Partner', kind: 'Partner', stage: 'Consider', motion: 'Both', runBy: 'Region', share: 8, cpm: 900 },
-        { id: 'sdr', on: true, name: 'SDR outbound & sales plays', owner: 'Sales / SDR', kind: 'Sales', stage: 'Decide', motion: 'Always-on', runBy: 'Region', share: 12, cpm: 1500 },
-        { id: 'product', on: true, name: 'In-product signals (PQL)', owner: 'Demand gen', kind: 'Product', stage: 'Consider', motion: 'Always-on', runBy: 'HQ', share: 6, cpm: 100 }
+        { id: 'email', on: true, name: 'Email nurture & lifecycle', owner: 'Demand gen', kind: 'Owned', stage: 'Consider', motion: 'Always-on', runBy: 'HQ', share: 12, cpm: 275 },
+        { id: 'webinar', on: true, name: 'Webinars & virtual events', owner: 'Demand gen', kind: 'Owned', stage: 'Consider', motion: 'Both', runBy: 'Both', share: 14, cpm: 1100 },
+        { id: 'events', on: true, name: 'Field & flagship events', owner: 'Field', kind: 'Owned', stage: 'Decide', motion: 'Burst', runBy: 'Region', share: 12, cpm: 3700 },
+        { id: 'content', on: true, name: 'Content & offers', owner: 'PMM', kind: 'Owned', stage: 'Aware', motion: 'Both', runBy: 'HQ', share: 8, cpm: 750 },
+        { id: 'seo', on: true, name: 'SEO (organic search)', owner: 'Demand gen', kind: 'Earned', stage: 'Aware', motion: 'Always-on', runBy: 'HQ', share: 5, cpm: 450 },
+        { id: 'aeo', on: true, name: 'AEO / GEO (AI answer engines)', owner: 'PMM', kind: 'Earned', stage: 'Aware', motion: 'Always-on', runBy: 'HQ', share: 3, cpm: 650 },
+        { id: 'paid', on: true, name: 'Paid media', owner: 'Paid (shared svc)', kind: 'Paid', stage: 'Aware', motion: 'Both', runBy: 'Both', share: 20, cpm: 2200 },
+        { id: 'partner', on: true, name: 'Partner marketing', owner: 'Partner', kind: 'Partner', stage: 'Consider', motion: 'Both', runBy: 'Region', share: 8, cpm: 1650 },
+        { id: 'sdr', on: true, name: 'SDR outbound & sales plays', owner: 'Sales / SDR', kind: 'Sales', stage: 'Decide', motion: 'Always-on', runBy: 'Region', share: 12, cpm: 2800 },
+        { id: 'product', on: true, name: 'In-product signals (PQL)', owner: 'Demand gen', kind: 'Product', stage: 'Consider', motion: 'Always-on', runBy: 'HQ', share: 6, cpm: 185 }
       ],
       moments: [
         { month: 2, name: 'Launch: AI agent suite for IT', type: 'Launch' },
@@ -651,7 +651,7 @@
   }
   // Built-in Gemini key every visitor uses, stored base64 of the reversed key. This is not a secret:
   // it ships in the page, so restrict it to this site's domain and the Gemini API in Google Cloud.
-  const HUB_GEMINI_KEY = '';
+  const HUB_GEMINI_KEY = 'QVRqX3gxX3NUNHBUM1NfaDg4RW1HUHFaTGlrQU4wMTlONVFiOVZNNDFTM0k2TlI4YkEuUUE=';
   const hubKey = () => { try { return HUB_GEMINI_KEY ? atob(HUB_GEMINI_KEY).split('').reverse().join('') : ''; } catch (e) { return ''; } };
   let ownKey = '', aiMode = 'own';
   try { aiMode = hubKey() && localStorage.getItem(STORE_KEY + ':ai') !== 'own' ? 'hub' : 'own'; } catch (e) { aiMode = hubKey() ? 'hub' : 'own'; }
@@ -684,8 +684,8 @@
     return o;
   }
   // give up after two minutes rather than leave the planner staring at a spinner
-  async function post(url, opts) {
-    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 120000);
+  async function post(url, opts, ms) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 120000);
     try { return await fetch(url, Object.assign({ signal: ctl.signal }, opts)); }
     catch (e) { throw new Error(e.name === 'AbortError' ? 'no answer after 2 minutes. Try again, or paste a shorter brief' : 'could not reach the AI service (' + e.message + ')'); }
     finally { clearTimeout(t); }
@@ -710,11 +710,19 @@
     // low thinking keeps Gemini fast (its default, high, can take minutes); thinking counts against the output cap
     const generationConfig = { maxOutputTokens: maxTokens * 2, thinkingConfig: { thinkingLevel: 'low' } };
     if (schema) { generationConfig.responseMimeType = 'application/json'; generationConfig.responseSchema = geminiSchema(schema); }
-    const res = await post('https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent', {
-      method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': aiKey },
-      body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts }], generationConfig })
-    });
-    const j = await res.json();
+    // when the newest model is overloaded, fall back to the next one instead of failing
+    let res, j;
+    for (const [n, model] of GEMINI_MODELS.entries()) {
+      const last = n === GEMINI_MODELS.length - 1;
+      try {
+        res = await post('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+          method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': aiKey },
+          body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts }], generationConfig })
+        }, last ? 120000 : 45000);
+      } catch (e) { if (last) throw e; continue; } // a model that hangs gets skipped too
+      j = await res.json();
+      if (last || ![429, 500, 503].includes(res.status)) break;
+    }
     if (!res.ok) throw new Error((j.error && j.error.message) || 'Request failed');
     if (j.promptFeedback && j.promptFeedback.blockReason) throw new Error('Gemini blocked this request (' + j.promptFeedback.blockReason + ')');
     const c = (j.candidates || [])[0];
@@ -722,7 +730,7 @@
     if (c.finishReason === 'MAX_TOKENS') throw new Error('the answer was too long to finish in one pass');
     return ((c.content && c.content.parts) || []).filter((x) => !x.thought).map((x) => x.text || '').join('').trim();
   }
-  const GEMINI_MODEL = 'gemini-3.8-flash';
+  const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3-flash-preview'];
 
   /* ---------- leadership asks: an agent drafts the email or Slack message ---------- */
   const HUB_URL = 'https://kristinejoy0419.github.io/Demand-Gen-Hub/';
@@ -760,7 +768,7 @@
       const out = await callAI({ maxTokens: 1200, schema: { type: 'object', properties: { subject: { type: 'string' }, body: { type: 'string' } }, required: ['subject', 'body'], additionalProperties: false },
         system: 'You are a Head of Global Campaigns writing to a senior leader. Write at an executive level: brief, confident, specific, no jargon or filler, no markdown.',
         text: (kind === 'slack' ? 'Draft a Slack message (no subject, set subject to an empty string), at most 70 words. Open with the ask, give the date, one line on why with a number, then the tracker location and link on their own line. Greet them as [Name].'
-          : 'Draft an email of at most 120 words. Lead with the decision needed and the date, give one or two lines of business impact using the numbers provided, then point to the tracker location by name with the link, and close by offering a short call. Greet them as [Name] and sign off as [Your name].') +
+          : 'Draft an email of at most 120 words. Lead with the decision needed and the date, give one or two lines of business impact using the numbers provided, then point to the tracker location by name with the link, and close by offering a short call. Use short paragraphs separated by blank lines. Greet them as [Name] and sign off as [Your name].') +
           ' Use only the facts below. Do not invent numbers.\n\n' + JSON.stringify(ctx, null, 1) });
       const j = JSON.parse(out.replace(/^```(json)?|```$/g, ''));
       drafts[i] = { kind, subject: j.subject || drafts[i].subject, body: j.body || drafts[i].body, by: aiName(), busy: false };
@@ -1905,7 +1913,7 @@
     const paid = P.channels.filter((c) => c.owner === 'Paid (shared svc)').reduce((s, c) => s + c.w, 0);
     out.push([paid > 0.35 ? 'watch' : 'ok', 'Paid is ' + pct(paid * 100) + ' of the mix' + (paid > 0.35 ? ', so the plan leans on a team you don\'t run' : '')]);
     const r = P.budget ? P.tot.pipe / P.budget : 0;
-    out.push([r === 0 ? 'watch' : r < 5 ? 'fix' : r < 10 ? 'watch' : 'ok', r ? 'Pipeline to spend ' + r.toFixed(1) + 'x' : 'Set cost per MQL to see pipeline to spend']);
+    out.push([r === 0 ? 'watch' : r < 3 ? 'fix' : r < 5 ? 'watch' : 'ok', r ? 'Pipeline to spend ' + r.toFixed(1) + 'x' : 'Set cost per MQL to see pipeline to spend']);
     const miss = S.assets.filter((x) => x.status === 'Missing').length;
     if (miss) out.push(['watch', miss + ' buying committee asset' + (miss > 1 ? 's' : '') + ' missing']);
     const noPlay = S.abmRegions.filter((g) => !g.owner || !g.next).length;
@@ -2246,7 +2254,7 @@
   }
 
   /* ---------- boot ---------- */
-  try { const t = localStorage.getItem(STORE_KEY + ':tab'); if (t && TABS.some((x) => x[0] === t)) tab = t; } catch (e) { /* ignore */ }
+  // always open on Overview; a #tab= link (from a drafted email) can still point somewhere else
   // links from drafted emails open the tab they point to: #tab=regions
   const fromHash = () => { const m = location.hash.match(/tab=(\w+)/); if (m && TABS.some((x) => x[0] === m[1])) { tab = m[1]; return true; } return false; };
   fromHash();
