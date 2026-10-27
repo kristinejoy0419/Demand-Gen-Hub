@@ -401,3 +401,16 @@ details.more[open]>summary{margin-bottom:8px}
 .wz-step .wz-k{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
 .wz-step .btns{margin-top:4px;align-items:center}
 .wz-step.ok{border-color:var(--line)}
+
+.cstat{font:600 10px/1 var(--f-body);letter-spacing:.02em;padding:3px 7px;border-radius:999px;white-space:nowrap;align-self:center}
+.cstat.ok{background:var(--good-soft);color:var(--good)}
+.cstat.gap{background:var(--over-soft);color:var(--over)}
+.cstat.opt{background:var(--line);color:var(--muted)}
+details.card>summary h3{margin-right:auto}
+.hint .cstat{display:inline-block;vertical-align:1px}
+details.brief-box{border:1px dashed var(--line);border-radius:10px;padding:10px 12px}
+details.brief-box>summary{margin-bottom:0;color:var(--ink,inherit)}
+details.brief-box[open]>summary{margin-bottom:8px}
+.tlwhy{display:block;flex-basis:100%;margin-top:4px}
+.rail details.card>summary{flex-wrap:wrap;align-items:center;row-gap:2px}
+.rail details.card>summary small{flex-basis:100%;text-align:left}

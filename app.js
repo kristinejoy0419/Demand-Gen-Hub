@@ -750,16 +750,16 @@
   const off100 = (a, k) => Math.abs(sum(a, k) - 100) > 1;
   const SETUP = [
     ['brief', 'campaign-and-brief', 'Campaign & brief', () => [!S.name && 'a plan name', !S.fy && 'the fiscal year', !S.brief && 'the brief'].filter(Boolean).join(', ')],
+    ['campaigns', 'campaigns', 'Campaigns', () => !S.campaigns.length ? 'the campaigns that carry the number' : off100(S.campaigns, 'share') ? 'campaign shares add to ' + Math.round(sum(S.campaigns, 'share')) + '%, not 100%' : S.campaigns.some((c) => !c.offer || !c.audience) ? 'a hero offer and audience for every campaign' : ''],
+    ['products', 'product-mix', 'Product mix', () => !S.products.some((p) => p.name) ? 'the products in scope' : off100(S.products, 'share') ? 'product shares add to ' + Math.round(sum(S.products, 'share')) + '%, not 100%' : ''],
     ['goal', 'pipeline-goal-and-funnel', 'Pipeline goal & funnel', () => [!(num(S.goal) > 0) && 'the sourced pipeline goal', !S.start && 'the plan start month', !(num(S.r1) > 0) && 'lead → MQL rate', !(num(S.r3) > 0) && 'SQO → won rate', !(num(S.cycle) > 0) && 'sales cycle'].filter(Boolean).join(', ')],
     ['targets', 'targets-and-baseline', 'Targets & baseline', () => [!(num(S.salesTarget) > 0) && 'the sales bookings target', !(num(S.lyPipe) > 0) && 'last year\'s pipeline'].filter(Boolean).join(', ')],
-    ['products', 'product-mix', 'Product mix', () => !S.products.some((p) => p.name) ? 'the products in scope' : off100(S.products, 'share') ? 'product shares add to ' + Math.round(sum(S.products, 'share')) + '%, not 100%' : ''],
-    ['campaigns', 'campaigns', 'Campaigns', () => !S.campaigns.length ? 'the campaigns that carry the number' : off100(S.campaigns, 'share') ? 'campaign shares add to ' + Math.round(sum(S.campaigns, 'share')) + '%, not 100%' : S.campaigns.some((c) => !c.offer || !c.audience) ? 'a hero offer and audience for every campaign' : ''],
     ['segments', 'segments', 'Segments', () => off100(S.segments, 'share') ? 'segment shares add to ' + Math.round(sum(S.segments, 'share')) + '%, not 100%' : S.segments.some((s) => !(num(s.acv) > 0) || !(num(s.mqlSqo) > 0)) ? 'deal size and MQL → SQO rate for every segment' : ''],
     ['regions', 'regions', 'Regions', () => off100(S.regions, 'share') ? 'region shares add to ' + Math.round(sum(S.regions, 'share')) + '%, not 100%' : S.regions.some((r) => !r.lead) ? 'an owner for every region' : ''],
     ['committee', 'buying-committee', 'Buying committee', () => !S.personas.some((p) => p.role) ? 'the roles in the buying committee' : ''],
     ['channels', 'channels-and-programs', 'Channels & programs', () => { const on = S.channels.filter((c) => c.on); return !on.length ? 'the programs you will run' : off100(on, 'share') ? 'program shares add to ' + Math.round(sum(on, 'share')) + '%, not 100%' : on.some((c) => !(num(c.cpm) > 0)) ? 'cost per MQL for every program' : ''; }],
     ['moments', 'launch-moments', 'Launch moments', () => !S.moments.length ? 'launches, events or buying seasons' : ''],
-    ['regional', 'regional-plans', 'Regional plans', () => { const n = S.regions.filter((r) => regionPlan(r.name).status === 'Not started').length; return n ? n + ' region' + (n === 1 ? ' has' : 's have') + ' no plan yet' : ''; }]
+    ['regional', 'regional-plans', 'Regional plans', () => { const n = S.regions.filter((r) => regionPlan(r.name).status === 'Not started').length; return n ? 'a plan from ' + n + ' more region' + (n === 1 ? '' : 's') : ''; }]
   ];
   function setupState() { return SETUP.map(([id, card, label, check]) => ({ id, card, label, gap: check() })); }
   function wizardHtml(compact) {
@@ -783,6 +783,15 @@
     if (w.contains(document.activeElement) && document.activeElement.dataset.wzQ != null) return; // don't wipe an answer mid-typing
     w.innerHTML = wizardHtml(false);
     const b = $('btn-fill-brief'); if (b) b.disabled = busy;
+    // the same status on each section's header, so the checklist and the cards tell one story
+    const st = setupState();
+    st.forEach((x, j) => {
+      const sm = document.querySelector('.rail [data-card="' + x.card + '"] > summary'); if (!sm) return;
+      let t = sm.querySelector('.cstat'); if (!t) { t = document.createElement('span'); sm.querySelector('h3').after(t); }
+      t.className = 'cstat ' + (x.gap ? 'gap' : 'ok'); t.textContent = (j + 1) + ' · ' + (x.gap ? 'needs input' : 'ready');
+    });
+    // a plan that is mostly filled doesn't need the brief upload in the way
+    const bb = $('brief-box'); if (bb && !bb.dataset.set) { bb.dataset.set = 1; bb.open = st.filter((x) => !x.gap).length < st.length / 2 || busy; }
   }
 
   // the brief as Claude reads it: a PDF goes in as a document, everything else as text
@@ -1006,7 +1015,7 @@
   }
   const go = (k, l) => '<button type="button" class="linkbtn" data-go="' + k + '">' + l + '</button>';
   const GUIDES = {
-    onepage: ['Start with the hero number and whether it covers what sales needs.', 'The campaigns table shows which campaigns carry the number and when each launches. Open ' + go('campaigns', 'Campaigns') + ' for the full plan behind each one.', 'Anything flagged under "Needs attention" links to the tab that explains it.', 'Building your own plan? Open ' + '<button type="button" class="linkbtn" data-open-card="setup">Start here: GTM brief</button>' + ' to upload your brief. The AI fills the plan, then walks you through each section that still needs input.'],
+    onepage: ['Start with the hero number and whether it covers what sales needs.', 'The campaigns table shows which campaigns carry the number and when each launches. Open ' + go('campaigns', 'Campaigns') + ' for the full plan behind each one.', 'Anything flagged under "Needs attention" links to the tab that explains it.', 'Building your own plan? Open ' + '<button type="button" class="linkbtn" data-open-card="setup">Start here</button>' + ' to upload your brief. The AI fills the plan, then walks you through each section that still needs input.'],
     campaigns: ['Each card is one campaign: its theme, hero offer, audience, and the share of pipeline it owns.', 'Open a campaign to see the programs that carry it and the milestones worked back from launch.', 'Click any month on a timeline to see what lands that month and why it is flagged.'],
     funnel: ['Each segment works the number backwards: pipeline, then SQOs, MQLs and leads.', 'Tap Enterprise or Commercial to see the campaigns and program buys that make up its number, and how the math is built.'],
     channels: ['Every program a campaign runs on, with its MQLs, cost per MQL, budget and pipeline.', 'Check who runs each one (HQ, shared or region) and who owns it.'],
@@ -1501,6 +1510,7 @@
     }).join('');
     const nFlag = info.filter((x) => x.k).length;
     return '<div class="tlwrap"><div class="tlhead"><b>Timeline</b><span class="note">In market ' + P.labels[s - 1] + '–' + P.labels[e - 1] + ' · launch ' + (P.labels[L - 1] || '–') + ' · click a month to see what is in it' + (nFlag ? ' and why it is flagged' : '') + '</span>' +
+      '<span class="note tlwhy">Flags are automatic rule checks on your inputs, not AI guesses: milestones that fall before the plan year, SDR capacity, pacing against actuals, 3 or more milestones in one month, owners already over capacity, and assets due or missing at launch.</span>' +
       '<span class="tlkey"><i class="k on"></i>In market <i class="k launch"></i>Launch <i class="dot fix"></i>Needs a fix <i class="dot watch"></i>Watch <span class="tlmk">Milestones</span></span></div>' +
       '<div class="tlscroll"><div class="tlrow" style="grid-template-columns:repeat(' + ns.length + ',minmax(56px,1fr))">' + cells + '</div></div>' + dets + '</div>';
   }
@@ -1923,7 +1933,7 @@
     window.addEventListener('beforeprint', () => { reopen = Array.from($('panel').querySelectorAll('details:not([open])')); reopen.forEach((d) => { d.open = true; }); });
     window.addEventListener('afterprint', () => { reopen.forEach((d) => { d.open = false; }); reopen = []; });
     $('btn-reset').onclick = () => { S = example(); save(); bindInputs(); $('example-pill').hidden = false; render(); toast('Example reloaded'); };
-    $('btn-blank').onclick = () => { S = blank(); save(); bindInputs(); $('example-pill').hidden = true; render(); toast('Started a blank plan'); };
+    $('btn-blank').onclick = () => { S = blank(); save(); bindInputs(); $('brief-box').open = true; $('example-pill').hidden = true; render(); toast('Started a blank plan'); };
     $('panel').addEventListener('change', (e) => { if (e.target.id === 'committee-region') { comRegion = e.target.value; render(); } });
     $('in-rp-file').onchange = (e) => uploadPlan(e.target.files[0]);
     $('panel').addEventListener('change', (e) => {
