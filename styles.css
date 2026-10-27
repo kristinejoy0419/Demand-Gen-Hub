@@ -417,6 +417,11 @@ details.brief-box[open]>summary{margin-bottom:8px}
 .rail details.card>summary{flex-wrap:wrap;align-items:center;row-gap:2px}
 .rail details.card>summary small{flex-basis:100%;text-align:left}
 .msed input,.msed select{width:100%;min-width:90px;font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:transparent;color:inherit}
-.msed td:first-child input{min-width:150px}
+.msed td:nth-child(2) input{min-width:150px}
 .msed select{min-width:150px}
 .sample-btn{font-size:12px;padding:6px 12px}
+.f.inline{flex-direction:row;align-items:center;gap:8px;margin-left:auto}
+.btns .f.inline select{width:auto;max-width:220px}
+.acts td:first-child,.msed td:first-child{width:36px;text-align:center}
+.msed td:first-child input{min-width:0;width:auto}
+tr.dim td{opacity:.6}

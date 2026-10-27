@@ -20,6 +20,8 @@
   function example() {
     return {
       isExample: true,
+      done: { 'ask|Approve $3.6M program budget, with 10% held back until the Q1 pacing review': true, 'ask|SLA with paid shared services: flights live 10 business days after brief, weekly pacing': true,
+        'ask|Agree sourced vs influenced definitions and the PQL handoff': true, 'ms|Admin & governance add-on|Campaign brief': true },
       name: 'FY27 IT buyer expansion',
       fy: 'FY27',
       product: 'AI agent suite for IT, admin & governance add-on, core work platform',
@@ -186,7 +188,7 @@
       tiers: [{ tier: 'Tier 1 · 1:1', accounts: 0, share: 100, play: '' }], assets: [], abmRegions: [],
       products: [{ name: '', share: 100, launch: 0 }],
       moments: [], regionPlans: {}, risks: [], raci: {},
-      campaigns: [], actuals: [], team: [], asks: [], salesTarget: 0, lyPipe: 0, lyMql: 0, lySqo: 0, lyBudget: 0, influenced: 0, expShare: 0
+      campaigns: [], actuals: [], team: [], asks: [], done: {}, salesTarget: 0, lyPipe: 0, lyMql: 0, lySqo: 0, lyBudget: 0, influenced: 0, expShare: 0
     });
   }
   // fill anything a saved or pasted plan is missing
@@ -811,7 +813,7 @@
 
   // the brief as Claude reads it: a PDF goes in as a document, everything else as text
   let briefDoc = null, busy = false;
-  let campOpen = 0; // which campaign card stays open across re-renders
+  let campOpen = 0, actOwner = ''; // which campaign card stays open across re-renders
   async function readBrief(f) {
     if (!f) return;
     const name = f.name, ext = (name.split('.').pop() || '').toLowerCase();
@@ -971,7 +973,7 @@
     ['Overview', [['onepage', 'Plan on a page']], 'The number, the gap to what sales needs, the budget, and what needs attention'],
     ['HQ strategy', [['campaigns', 'Campaigns'], ['funnel', 'Funnel & targets'], ['channels', 'Channel mix'], ['quarters', 'Quarterly plan']], 'What is the number, how do we get there, and what are we running?'],
     ['Regions', [['regions', 'Regional plans'], ['committee', 'Buying committee & ABM']], 'Are the regions bought in, and what are they running?'],
-    ['Execution', [['pacing', 'Pacing'], ['risks', 'Risks'], ['scenarios', 'Scenarios & asks']], 'Are we on track, and what do we do if we are not?'],
+    ['Execution', [['actions', 'Action list'], ['pacing', 'Pacing'], ['risks', 'Risks'], ['scenarios', 'Scenarios & asks']], 'What is due now, are we on track, and what do we do if we are not?'],
     ['More', [['summary', 'Funnel summary'], ['calendar', 'Calendar'], ['owners', 'Team & owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['checks', 'Check the math']], 'Supporting detail: calendar, team, the paid brief, measurement, and a math check']
   ];
   const TABS = TAB_GROUPS.flatMap((g) => g[1]);
@@ -1031,6 +1033,7 @@
   }
   const go = (k, l) => '<button type="button" class="linkbtn" data-go="' + k + '">' + l + '</button>';
   const GUIDES = {
+    actions: ['Late and due-this-month items come first, each with its owner and month.', 'Tick a milestone or ask when it is done. Ticking an asset marks it Live.', 'Filter by owner to run a team stand-up, or copy the list into a status update.', 'Export to Asana turns the whole plan into tasks, one section per campaign.'],
     onepage: ['Start with the hero number and whether it covers what sales needs.', 'The campaigns table shows which campaigns carry the number and when each launches. Open ' + go('campaigns', 'Campaigns') + ' for the full plan behind each one.', 'Anything flagged under "Needs attention" links to the tab that explains it.', 'Building your own plan? Open ' + '<button type="button" class="linkbtn" data-open-card="setup">Start here</button>' + ' to upload your brief. The AI fills the plan, then walks you through each section that still needs input.'],
     campaigns: ['Each card is one campaign: its theme, hero offer, audience, and the share of pipeline it owns.', 'Open a campaign to see the programs that carry it and the milestones worked back from launch.', 'Click any month on a timeline to see what lands that month and why it is flagged.'],
     funnel: ['Each segment works the number backwards: pipeline, then SQOs, MQLs and leads.', 'Tap Enterprise or Commercial to see the campaigns and program buys that make up its number, and how the math is built.'],
@@ -1493,6 +1496,9 @@
         if (k !== 'ok') flags.push([k, l + ': ' + money(m.act.pipe) + ' pipeline vs ' + money(m.plan.pipe) + ' planned (' + Math.round(r * 100) + '%).']);
         else lives.push(['Actuals', 'On pace: ' + money(m.act.pipe) + ' vs ' + money(m.plan.pipe) + ' planned']);
       }
+      // milestones past their month and not ticked off
+      const cm = curMonth(P);
+      if (n < cm) ms.filter((x) => !msDoneState(c, x, cm)).forEach((x) => flags.push(['fix', 'Late: ' + esc(x[0]) + ' (' + esc(x[2]) + ') is not marked done. Tick it off in the Action list or under Milestones.']));
       // too much landing at once
       if (ms.length >= 3) flags.push(['watch', ms.length + ' milestones land in the same month. Check the owners can carry them together.']);
       // owners who are already over capacity
@@ -1558,7 +1564,85 @@
     return out;
   }
 
+  /* ---------- actions: what is due, late, or open, with an owner ---------- */
+  // the plan month we're in: today if it falls inside the plan year, else the month after the last actuals
+  function curMonth(P) {
+    const [y, m] = (S.start || '2027-01').split('-').map(Number), d = new Date();
+    const n = (d.getFullYear() - y) * 12 + (d.getMonth() + 1 - (m || 1)) + 1;
+    return n >= 1 && n <= 12 ? n : Math.min(12, Math.max(1, (P.pace ? P.pace.asOf : 0) + 1));
+  }
+  const msKey = (c, m) => 'ms|' + c.name + '|' + m[0];
+  // a milestone is done when ticked; untouched ones in a live campaign that are already past count as done
+  function msDoneState(c, m, cur) { const k = msKey(c, m); return k in (S.done || {}) ? !!S.done[k] : (c.status === 'Done' || (c.status === 'In flight' && m[1] < cur)); }
+  function monthEnd(n) { const [y, m] = (S.start || '2027-01').split('-').map(Number); const d = new Date(Date.UTC(y, (m || 1) - 1 + n, 0)); return d.toISOString().slice(0, 10); }
+  function actionItems(P) {
+    const cur = curMonth(P), out = [];
+    const when = (n) => (n < cur ? 'late' : n === cur ? 'now' : 'next');
+    P.camps.forEach((c) => c.ms.forEach((m) => {
+      const done = msDoneState(c, m, cur); if (m[1] > cur + 1 || (done && m[1] < cur)) return;
+      out.push({ k: done ? 'done' : when(m[1]), what: m[0], area: c.name, owner: m[2], month: m[1], key: msKey(c, m), done });
+    }));
+    S.assets.forEach((a, i) => { const n = Math.round(num(a.due)); if (!n || n > cur + 1) return; const done = a.status === 'Live'; if (done && n < cur) return;
+      out.push({ k: done ? 'done' : when(n), what: a.asset + ' (' + a.status + ')', area: 'Asset for ' + a.role, owner: a.owner, month: n, asset: i, done }); });
+    S.asks.forEach((a) => { const n = Math.round(num(a.by)); if (!n || n > cur + 1) return; const key = 'ask|' + a.ask, done = !!(S.done || {})[key]; if (done && n < cur) return;
+      out.push({ k: done ? 'done' : when(n), what: a.ask, area: 'Ask of leadership', owner: a.who, month: n, key, done }); });
+    P.risks.filter((r) => r.status === 'Triggered').forEach((r) => out.push({ k: 'now', what: 'Run the contingency: ' + r.contingency, area: 'Risk: ' + r.risk, owner: r.owner, month: cur }));
+    health(P).filter((h) => h[0] === 'fix').forEach((h) => out.push({ k: 'issue', what: h[1], area: 'Plan check', owner: 'Demand gen', month: 0 }));
+    const order = { late: 0, now: 1, issue: 2, next: 3, done: 4 };
+    return { cur, items: out.sort((a, b) => order[a.k] - order[b.k] || a.month - b.month) };
+  }
+  // every milestone, open asset and ask as Asana tasks: one section per campaign, due on the last day of the month
+  function asanaCsv(P) {
+    const cur = curMonth(P), q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const rows = [['Name', 'Section/Column', 'Due Date', 'Assignee', 'Owner team', 'Status', 'Description']];
+    P.camps.forEach((c) => c.ms.forEach((m) => rows.push([m[0], c.name, monthEnd(m[1]), '', m[2], msDoneState(c, m, cur) ? 'Done' : m[1] < cur ? 'Late' : 'Open',
+      c.tier + ' · launch ' + (P.labels[Math.round(num(c.launch)) - 1] || '') + '. Theme: ' + (c.theme || '–') + '. Hero offer: ' + (c.offer || '–') + '.'])));
+    S.assets.filter((a) => a.status !== 'Live').forEach((a) => rows.push([a.asset, 'Offers & assets', num(a.due) >= 1 ? monthEnd(Math.round(num(a.due))) : '', '', a.owner, a.status, 'For ' + a.role + ' at the ' + a.stage + ' stage.' + (a.regions ? ' Localize for ' + a.regions + '.' : '')]));
+    S.asks.forEach((a) => rows.push([a.ask, 'Asks of leadership', num(a.by) >= 1 ? monthEnd(Math.round(num(a.by))) : '', '', a.who, (S.done || {})['ask|' + a.ask] ? 'Done' : 'Open', a.why || '']));
+    return rows.map((r) => r.map(q).join(',')).join('\r\n');
+  }
+  function actionsText(P) {
+    const { cur, items } = actionItems(P), lab = { late: 'LATE', now: 'This month', next: 'Next month', issue: 'Fix', done: 'Done' };
+    return (S.name || 'Plan') + ': actions as of ' + P.labels[cur - 1] + '\n' + items.filter((x) => x.k !== 'done').map((x) => '• [' + lab[x.k] + '] ' + x.what + ' (' + (x.owner || 'no owner') + (x.month ? ', ' + (x.month >= 1 ? P.labels[x.month - 1] : 'before the plan year') : '') + ')').join('\n');
+  }
+  // actuals from a CRM export: one row per month, or one row per deal, summed by month
+  async function importActuals(file) {
+    try {
+      let rows;
+      if (/\.xlsx?$/i.test(file.name)) { const X = await loadXlsx(); const wb = X.read(await file.arrayBuffer(), { type: 'array' }); rows = X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' }); }
+      else rows = parseCsv(await file.text());
+      const head = (rows.shift() || []).map((h) => String(h).toLowerCase());
+      const col = (re) => head.findIndex((h) => re.test(h));
+      const c = { month: col(/month|period|date|close/), mql: col(/mql/), sqo: col(/sqo|sql|sal\b|opportunit|opps?\b/), pipe: col(/pipe|amount|value|acv|arr/), spend: col(/spend|cost|budget/) };
+      if (c.month < 0) throw new Error('no month or date column');
+      const by = {};
+      const keys = ['mql', 'sqo', 'pipe', 'spend'].filter((k) => c[k] >= 0);
+      rows.forEach((r) => { const n = planMonth(r[c.month]); if (n < 1 || n > 12) return; const a = by[n] || (by[n] = keys.reduce((o, k) => Object.assign(o, { [k]: 0 }), { month: n }));
+        keys.forEach((k) => { const v = String(r[c[k]] == null ? '' : r[c[k]]).trim(); if (!v) return;
+          // a deal export lists opportunities by name: count them as SQOs
+          a[k] += /^[-$\d.,\s]+[kKmM]?$/.test(v) ? money2num(v) : k === 'sqo' ? 1 : 0; }); });
+      const ms = Object.values(by); if (!ms.length) throw new Error('no rows with a month inside the plan year');
+      ms.forEach((a) => { Object.keys(a).forEach((k) => { a[k] = Math.round(a[k]); }); const i = S.actuals.findIndex((x) => Math.round(num(x.month)) === a.month); if (i >= 0) Object.assign(S.actuals[i], a); else S.actuals.push(Object.assign({ mql: 0, sqo: 0, pipe: 0, spend: 0 }, a)); });
+      S.actuals.sort((a, b) => num(a.month) - num(b.month));
+      save(); bindInputs(); render(); toast('Imported actuals for ' + ms.length + ' month' + (ms.length === 1 ? '' : 's'));
+    } catch (e) { toast('Could not read that file: ' + e.message); }
+  }
   const VIEWS2 = {
+    actions(P) {
+      const { cur, items } = actionItems(P), lab = { late: ['fix', 'Late'], now: ['watch', 'This month'], next: ['ok', 'Next month'], issue: ['fix', 'Fix'], done: ['ok', 'Done'] };
+      const owners = Array.from(new Set(items.map((x) => x.owner).filter(Boolean))).sort();
+      const shown = items.filter((x) => !actOwner || x.owner === actOwner);
+      const cnt = (k) => items.filter((x) => x.k === k).length;
+      const rows = shown.map((x) => '<tr' + (x.done ? ' class="dim"' : '') + '><td>' + (x.key || x.asset != null ? '<input type="checkbox" ' + (x.asset != null ? 'data-asset-done="' + x.asset + '"' : 'data-done="' + esc(x.key) + '"') + (x.done ? ' checked' : '') + ' aria-label="Done: ' + esc(x.what) + '">' : '') + '</td>' +
+        '<td>' + hp(lab[x.k][0], lab[x.k][1]) + '</td><td>' + esc(x.what) + '</td><td>' + esc(x.area) + '</td><td>' + esc(x.owner || '–') + '</td><td>' + (x.month >= 1 ? P.labels[x.month - 1] : x.month < 0 || (x.month === 0 && x.k !== 'issue') ? 'Before plan year' : '–') + '</td></tr>').join('');
+      return '<div><h2>Action list</h2><p class="lead">Everything due, late or open as of <b>' + P.labels[cur - 1] + '</b>, in one place: campaign milestones, assets, asks of leadership, triggered risks and plan checks. Tick items off as they are done. Export the full plan to Asana as tasks, or copy this list into a status update.</p></div>' +
+        '<div class="tiles"><div class="tile' + (cnt('late') ? ' alert' : '') + '"><span>Late</span><b>' + cnt('late') + '</b><span>past their month</span></div><div class="tile"><span>Due this month</span><b>' + cnt('now') + '</b><span>' + P.labels[cur - 1] + '</span></div>' +
+        '<div class="tile' + (cnt('issue') ? ' alert' : '') + '"><span>Plan fixes</span><b>' + cnt('issue') + '</b><span>from the plan checks</span></div><div class="tile"><span>Next month</span><b>' + cnt('next') + '</b><span>' + (P.labels[cur] || 'next FY') + '</span></div></div>' +
+        '<div class="btns"><button type="button" class="btn primary" id="btn-asana-csv">Export to Asana (CSV)</button><button type="button" class="btn" id="btn-actions-copy">Copy as a status update</button>' +
+        '<label class="f inline">Owner <select id="act-owner"><option value="">Everyone</option>' + owners.map((o) => '<option' + (o === actOwner ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select></label></div>' +
+        '<p class="note">The Asana file has every milestone, open asset and ask as a task, one section per campaign, due on the last day of its month. In Asana, create a project and choose Import → CSV, then match Owner team to people.</p>' +
+        '<div class="out"><table class="t acts" data-export><thead><tr><th>Done</th><th>Status</th><th>Action</th><th>Campaign or area</th><th>Owner</th><th>Due</th></tr></thead><tbody>' + (rows || '<tr><td colspan="6" class="note">Nothing due.</td></tr>') + '</tbody></table></div>';
+    },
     checks(P) {
       const tol = (a, b) => Math.abs(a - b) <= Math.max(1, Math.abs(b) * 0.005);
       const sumIn = (rows, k) => rows.reduce((a, r) => a + Math.max(0, num(r[k])), 0);
@@ -1638,8 +1722,9 @@
       const cards = P.camps.map((c, i) => {
         const L = Math.round(num(c.launch)) || 1, src = S.campaigns[i], custom = Array.isArray(src.msPlan);
         const opts = (o) => Array.from({ length: 19 }, (_, k) => k - 12).map((v) => '<option value="' + v + '"' + (v === o ? ' selected' : '') + '>' + msWhen(v) + '</option>').join('');
-        const ms = c.ms.map((m, j) => { const o = m[1] - L; return '<tr><td><input type="text" data-ms="' + i + '-' + j + '-0" value="' + esc(m[0]) + '" aria-label="Milestone"></td><td><select data-ms="' + i + '-' + j + '-1" aria-label="When">' + opts(o) + '</select></td>' +
-          '<td>' + (m[1] < 1 ? '<span class="pill burst">Before plan start</span>' : esc(P.labels[m[1] - 1] || 'Next FY')) + '</td><td><input type="text" data-ms="' + i + '-' + j + '-2" value="' + esc(m[2]) + '" aria-label="Owner"></td>' +
+        const cur = curMonth(P);
+        const ms = c.ms.map((m, j) => { const o = m[1] - L, dn = msDoneState(c, m, cur); return '<tr' + (dn ? ' class="dim"' : '') + '><td><input type="checkbox" data-done="' + esc(msKey(c, m)) + '"' + (dn ? ' checked' : '') + ' aria-label="Done: ' + esc(m[0]) + '"></td><td><input type="text" data-ms="' + i + '-' + j + '-0" value="' + esc(m[0]) + '" aria-label="Milestone"></td><td><select data-ms="' + i + '-' + j + '-1" aria-label="When">' + opts(o) + '</select></td>' +
+          '<td>' + (m[1] < 1 ? '<span class="pill burst">Before plan start</span>' : esc(P.labels[m[1] - 1] || 'Next FY')) + (!dn && m[1] < cur ? ' ' + hp('fix', 'Late') : '') + '</td><td><input type="text" data-ms="' + i + '-' + j + '-2" value="' + esc(m[2]) + '" aria-label="Owner"></td>' +
           '<td><button type="button" class="linkbtn" data-ms-del="' + i + '-' + j + '" aria-label="Remove ' + esc(m[0]) + '">Remove</button></td></tr>'; }).join('');
         const msNote = custom ? 'You edited these milestones. They move with the launch month.' : 'Worked back from launch using best-practice lead times for a ' + esc(c.tier || 'Tier 2 launch') + ' (' + (c.tier === 'Tier 1 launch' ? 'brief 4 months out, messaging 3, creative and paid brief 2, enablement 1, retro 3 months after' : c.tier === 'Always-on' ? 'brief 2 months out, messaging, creative and enablement 1, retro each quarter' : 'brief 3 months out, messaging 2, creative, paid brief and enablement 1, retro 2 months after') + '). Edit any row to match how your team works.';
         return '<details class="camp" data-camp="' + i + '"' + (i === campOpen ? ' open' : '') + '><summary><span class="rtop"><span class="pill ' + (c.tier === 'Tier 1 launch' ? 'burst' : c.tier === 'Always-on' ? 'on' : 'both') + '">' + esc(c.tier) + '</span><span class="note">' + esc(c.status || 'Planning') + ' · owner ' + esc(c.owner || '–') + '</span></span>' +
@@ -1647,7 +1732,7 @@
           '<div class="rbody"><div><h4>Theme</h4><p>' + (esc(c.theme) || '<span class="note">–</span>') + '</p></div><div><h4>Hero offer</h4><p>' + (esc(c.offer) || '<span class="note">–</span>') + '</p></div>' +
           '<div><h4>Audience</h4><p>' + (esc(c.audience) || '<span class="note">–</span>') + '</p></div><div><h4>Product</h4><p>' + (esc(c.product) || '<span class="note">–</span>') + '</p></div>' +
           '<div><h4>Programs</h4><p>' + (c.chans.map((x) => esc(x.name)).join(', ') || '<span class="note">None matched</span>') + '</p></div>' +
-          '<div class="wide"><h4>Milestones</h4><p class="note">' + msNote + '</p><div class="out"><table class="t msed"><thead><tr><th>Milestone</th><th>Timing</th><th>Month</th><th>Owner</th><th></th></tr></thead><tbody>' + ms + '</tbody></table></div>' +
+          '<div class="wide"><h4>Milestones</h4><p class="note">' + msNote + '</p><div class="out"><table class="t msed"><thead><tr><th>Done</th><th>Milestone</th><th>Timing</th><th>Month</th><th>Owner</th><th></th></tr></thead><tbody>' + ms + '</tbody></table></div>' +
           '<div class="btns"><button type="button" class="btn" data-ms-add="' + i + '">Add milestone</button>' + (custom ? '<button type="button" class="linkbtn" data-ms-reset="' + i + '">Reset to best practice</button>' : '') + '</div></div></div></details>';
       }).join('');
       const exp = P.camps.map((c) => '<tr><td>' + esc(c.name) + '</td><td>' + esc(c.tier) + '</td><td>' + esc(c.theme) + '</td><td>' + esc(c.offer) + '</td><td>' + esc(c.audience) + '</td><td>' + (P.labels[Math.round(num(c.launch)) - 1] || '') + '</td><td>' + money(c.pipe) + '</td><td>' + fmtInt(c.mql) + '</td><td>' + money(c.cost) + '</td><td>' + esc(c.owner) + '</td></tr>').join('');
@@ -2034,6 +2119,25 @@
       else if (b.dataset.msDel != null) { const [i, j] = b.dataset.msDel.split('-').map(Number); msRows(i).splice(j, 1); msDone(i); }
       else { const i = +b.dataset.msReset; delete S.campaigns[i].msPlan; msDone(i); toast('Milestones reset to best practice'); }
     });
+    $('panel').addEventListener('change', (e) => {
+      const t = e.target;
+      if (t.dataset.done != null) { S.done = S.done || {}; S.done[t.dataset.done] = t.checked; save(); render(); }
+      else if (t.dataset.assetDone != null) { const a = S.assets[+t.dataset.assetDone]; if (a) { a.status = t.checked ? 'Live' : 'In production'; save(); bindInputs(); render(); } }
+      else if (t.id === 'act-owner') { actOwner = t.value; render(); }
+    });
+    $('panel').addEventListener('click', (e) => {
+      if (e.target.id === 'btn-asana-csv') { download((S.name || 'demand-gen-plan').replace(/[^\w-]+/g, '-') + '-asana.csv', new Blob([asanaCsv(extend(compute()))], { type: 'text/csv' })); toast('Asana CSV downloaded'); }
+      else if (e.target.id === 'btn-actions-copy') { const t = actionsText(extend(compute())); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Status update copied'), () => toast('Copy failed')); }
+    });
+    // plan files: the whole plan as JSON, so a team can work from one version
+    $('btn-plan-save').onclick = () => { download((S.name || 'demand-gen-plan').replace(/[^\w-]+/g, '-') + '.json', new Blob([JSON.stringify({ app: 'demand-gen-hub', saved: new Date().toISOString(), plan: S }, null, 1)], { type: 'application/json' })); toast('Plan file saved'); };
+    $('btn-plan-open').onclick = () => $('in-plan-file').click();
+    $('in-plan-file').onchange = async (e) => {
+      const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+      try { const d = JSON.parse(await f.text()), p = d && d.plan ? d.plan : d; if (!p || !Array.isArray(p.campaigns) || !Array.isArray(p.channels)) throw new Error('not a Demand Gen Hub plan file');
+        S = fill(p); save(); bindInputs(); showPill(); render(); toast('Opened ' + (S.name || f.name)); } catch (x) { toast('Could not open that file: ' + x.message); }
+    };
+    $('in-actuals-file').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importActuals(f); };
     $('panel').addEventListener('toggle', (e) => { const d = e.target; if (d.matches && d.matches('details.camp') && d.open) campOpen = +d.dataset.camp; }, true);
     $('panel').addEventListener('click', (e) => {
       const b = e.target.closest('button[data-tl]'); if (!b) return;
