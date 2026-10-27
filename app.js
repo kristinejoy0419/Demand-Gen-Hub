@@ -331,7 +331,7 @@
     sel.innerHTML = names.map((n) => '<option' + (n === rpSel ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
     sel.onchange = () => { rpSel = sel.value; bindRegionPlan(); };
     const has = !!rpSel;
-    ['in-rp-status', 'in-rp-adapt', 'btn-rp-copy'].forEach((id) => { $(id).disabled = !has; });
+    ['in-rp-status', 'in-rp-adapt', 'btn-rp-copy', 'in-rp-file'].forEach((id) => { $(id).disabled = !has; });
     if (!has) { $('ed-rp-programs').innerHTML = '<p class="hint">Add a region above first.</p>'; return; }
     const pl = regionPlan(rpSel);
     $('in-rp-status').value = pl.status || 'Not started';
@@ -343,6 +343,172 @@
       { key: 'budget', label: 'Budget $', type: 'num', w: 70 }, { key: 'mql', label: 'MQLs', type: 'num', w: 50 }
     ], { noun: 'program', make: () => ({ name: '', month: 1, budget: 0, mql: 0 }) });
   }
+  /* ---------- plan upload: CSV or Excel, one row per program ---------- */
+  const COLS = { name: /program|campaign|tactic|activity|name|initiative/i, month: /month|date|when|timing|start/i, budget: /budget|cost|spend|investment|\$/i, mql: /mql|leads?\b/i, region: /region|geo|market|theater/i };
+  function parseCsv(text) {
+    const sep = (text.split('\n')[0].match(/\t/g) || []).length > (text.split('\n')[0].match(/,/g) || []).length ? '\t' : ',';
+    const rows = []; let row = [], cell = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === sep) { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter((r) => r.some((c) => String(c).trim()));
+  }
+  function loadXlsx() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    return new Promise((ok, fail) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      sc.onload = () => ok(window.XLSX); sc.onerror = () => fail(new Error('Excel reader did not load'));
+      document.head.appendChild(sc);
+    });
+  }
+  function money2num(v) {
+    const t = String(v == null ? '' : v).replace(/[$,\s]/g, '');
+    const m = t.match(/^(-?[\d.]+)([kKmM]?)/); if (!m) return 0;
+    return parseFloat(m[1]) * (/k/i.test(m[2]) ? 1e3 : /m/i.test(m[2]) ? 1e6 : 1);
+  }
+  // a month as written in the file -> plan month (1 = plan start)
+  function planMonth(v) {
+    const startM = num((S.start || '2027-01').split('-')[1]) || 1;
+    const rel = (cal) => ((cal - startM + 12) % 12) + 1;
+    if (typeof v === 'number') return v > 20000 ? rel(new Date(Math.round((v - 25569) * 864e5)).getUTCMonth() + 1) : Math.round(v);
+    const t = String(v || '').trim(); if (!t) return 0;
+    const name = MONTHS.findIndex((m) => t.toLowerCase().startsWith(m.toLowerCase()));
+    if (name >= 0) return rel(name + 1);
+    const iso = t.match(/^(\d{4})-(\d{1,2})/); if (iso) return rel(+iso[2]);
+    const us = t.match(/^(\d{1,2})\/\d{1,2}\/\d{2,4}$/); if (us) return rel(+us[1]);
+    const n = parseInt(t.replace(/^m(onth)?\s*/i, ''), 10); return isFinite(n) ? n : 0;
+  }
+  function rowsToPrograms(rows, region) {
+    let h = rows.findIndex((r) => r.filter((c) => Object.values(COLS).some((re) => re.test(String(c)))).length >= 2);
+    if (h < 0) throw new Error('Couldn\'t find a header row with program, month, budget and MQL columns');
+    const head = rows[h].map((c) => String(c));
+    const col = {};
+    Object.keys(COLS).forEach((k) => { col[k] = head.findIndex((c, i) => COLS[k].test(c) && !Object.values(col).includes(i)); });
+    if (col.name < 0) throw new Error('No program column found');
+    const out = [];
+    rows.slice(h + 1).forEach((r) => {
+      if (col.region >= 0 && r[col.region] && String(r[col.region]).trim().toLowerCase() !== region.toLowerCase()) return;
+      const name = String(r[col.name] || '').trim(); if (!name) return;
+      out.push({ name, month: col.month >= 0 ? planMonth(r[col.month]) : 0, budget: col.budget >= 0 ? money2num(r[col.budget]) : 0, mql: col.mql >= 0 ? money2num(r[col.mql]) : 0 });
+    });
+    if (!out.length) throw new Error('No programs found for ' + region);
+    return out;
+  }
+  async function uploadPlan(file) {
+    if (!rpSel || !file) return;
+    const region = rpSel;
+    try {
+      let rows;
+      if (/\.xlsx?$/i.test(file.name)) {
+        const X = await loadXlsx();
+        const wb = X.read(await file.arrayBuffer(), { type: 'array' });
+        const sheet = wb.SheetNames.find((n) => n.toLowerCase() === region.toLowerCase()) || wb.SheetNames[0];
+        rows = X.utils.sheet_to_json(wb.Sheets[sheet], { header: 1, raw: true, defval: '' });
+      } else rows = parseCsv(await file.text());
+      const pl = regionPlan(region);
+      pl.programs = rowsToPrograms(rows, region);
+      pl.file = file.name; pl.uploaded = new Date().toISOString().slice(0, 10); pl.ai = '';
+      if (pl.status === 'Not started') pl.status = 'Draft';
+      tab = 'regions'; renderTabs(); changed(true);
+      toast(pl.programs.length + ' programs read from ' + file.name);
+      const el = document.getElementById('rg-' + slug(region)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) { toast(e.message || 'Couldn\'t read that file'); }
+    $('in-rp-file').value = '';
+  }
+  function templateCsv() {
+    const pl = rpSel ? regionPlan(rpSel) : { programs: [] };
+    const rows = (pl.programs.length ? pl.programs : [{ name: 'Example: city roadshow', month: 3, budget: 100000, mql: 50 }])
+      .map((x) => [rpSel || '', '"' + String(x.name).replace(/"/g, '""') + '"', P_label(x.month), Math.round(num(x.budget)), Math.round(num(x.mql))].join(','));
+    return 'Region,Program,Month,Budget,MQLs\n' + rows.join('\n') + '\n';
+  }
+  function P_label(m) { return monthLabels()[Math.round(num(m)) - 1] || m; }
+  const slug = (t) => String(t).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+  /* ---------- digest: read a region's plan against the global plan ---------- */
+  function digest(r, P) {
+    const progs = (r.plan.programs || []).filter((x) => x.name || num(x.mql));
+    if (!progs.length) return { head: 'No plan yet. ' + esc(r.name) + ' owes ' + fmtInt(r.owes) + ' MQLs from its own programs.', items: [['fix', 'Ask ' + esc(r.lead || 'the regional lead') + ' to upload a plan.']] };
+    const items = [];
+    const regCh = P.channels.filter((c) => c.runBy === 'Region');
+    const planCpm = regCh.reduce((a, c) => a + c.mql, 0) ? regCh.reduce((a, c) => a + c.cost, 0) / regCh.reduce((a, c) => a + c.mql, 0) : 0;
+    const allotted = regCh.reduce((a, c) => a + c.cost, 0) * r.w;
+    const cpm = r.committed ? r.spend / r.committed : 0;
+    // coverage
+    if (r.gap > 0.5) items.push(['fix', 'Short ' + fmtInt(r.gap) + ' MQLs. At ' + money(cpm || planCpm) + ' per MQL that is about ' + money(r.gap * (cpm || planCpm)) + ' more in regional programs, or ask HQ to point a global webinar or paid burst at ' + esc(r.name) + '.']);
+    else if (r.coverage > 1.2) items.push(['ok', 'Covers ' + coverCell(r.coverage) + ' of what it owes. HQ could ease paid spend into ' + esc(r.name) + ' or raise its target.']);
+    else items.push(['ok', 'Covers what it owes (' + coverCell(r.coverage) + ').']);
+    // budget
+    if (allotted && r.spend > allotted * 1.1) items.push(['fix', 'Spends ' + money(r.spend) + ' against about ' + money(allotted) + ' planned for region-run programs, ' + money(r.spend - allotted) + ' over.']);
+    else if (allotted) items.push(['ok', 'Spends ' + money(r.spend) + ' of about ' + money(allotted) + ' planned for region-run programs.']);
+    // efficiency
+    if (planCpm && cpm > planCpm * 1.5) items.push(['watch', 'Costs ' + money(cpm) + ' per MQL against ' + money(planCpm) + ' planned.']);
+    progs.forEach((x) => { const c = num(x.mql) ? num(x.budget) / num(x.mql) : 0; if (planCpm && c > planCpm * 2) items.push(['watch', esc(x.name) + ' costs ' + money(c) + ' per MQL, over twice the plan. Check the MQL estimate or treat it as influence, not sourced.']); });
+    const noMql = progs.filter((x) => !num(x.mql)).length, noMonth = progs.filter((x) => !num(x.month)).length;
+    if (noMql) items.push(['watch', noMql + ' program' + (noMql > 1 ? 's have' : ' has') + ' no MQL estimate.']);
+    if (noMonth) items.push(['watch', noMonth + ' program' + (noMonth > 1 ? 's have' : ' has') + ' no month.']);
+    // SDR capacity
+    progs.forEach((x) => { const i = Math.round(num(x.month)) - 1; if (P.sdrCap > 0 && P.monthly[i] > P.sdrCap + 0.5) items.push(['watch', esc(x.name) + ' lands in ' + P.labels[i] + ', when SDRs are already over capacity. Line up follow-up before it runs.']); });
+    // launches
+    S.moments.filter((m) => m.type === 'Launch').forEach((m) => {
+      const lm = Math.round(num(m.month));
+      if (!progs.some((x) => { const d = Math.round(num(x.month)) - lm; return d >= 0 && d <= 1; })) items.push(['watch', 'Nothing in ' + esc(r.name) + ' follows ' + esc(m.name) + ' (' + (P.labels[lm - 1] || 'month ' + lm) + '). A local event or webinar in that window would ride the launch.']);
+    });
+    // late-year pipeline
+    const lateFrom = Math.max(1, 12 - Math.round(num(S.cycle) / 30));
+    const late = progs.filter((x) => num(x.month) > lateFrom).reduce((a, x) => a + num(x.mql), 0);
+    if (r.committed && late / r.committed > 0.3) items.push(['watch', fmtInt(late / r.committed * 100) + '% of its MQLs land after ' + P.labels[lateFrom - 1] + ', so that pipeline mostly closes next year.']);
+    const rank = { fix: 0, watch: 1, ok: 2 };
+    items.sort((a, b) => rank[a[0]] - rank[b[0]]);
+    return { head: progs.length + ' program' + (progs.length === 1 ? '' : 's') + ' · ' + money(r.spend) + ' · ' + fmtInt(r.committed) + ' MQLs · ' + coverCell(r.coverage) + ' of what ' + esc(r.name) + ' owes', items };
+  }
+  function digestBox(r, P) {
+    const d = digest(r, P), lab = { fix: 'Fix', watch: 'Watch', ok: 'OK' };
+    const ai = r.plan.ai ? '<div class="aidig"><b>Claude\'s read</b><div>' + esc(r.plan.ai).replace(/\n/g, '<br>') + '</div></div>' : '';
+    const btn = aiKey && (r.plan.programs || []).length ? '<button class="btn" type="button" data-ai="' + esc(r.name) + '">' + (r.plan.ai ? 'Refresh Claude\'s read' : 'Ask Claude for a read') + '</button>' : '';
+    return '<div class="digest"><div class="dhead"><b>Digest</b>' + (r.plan.file ? '<span class="note">from ' + esc(r.plan.file) + (r.plan.uploaded ? ' · ' + esc(r.plan.uploaded) : '') + '</span>' : '') + '</div>' +
+      '<p class="note">' + d.head + '</p><div class="health">' + d.items.map(([k, t]) => '<span class="hp ' + k + '">' + lab[k] + '</span><span>' + t + '</span>').join('') + '</div>' + ai + btn + '</div>';
+  }
+  function hqDigest(P) {
+    const all = P.regions.map((r) => ({ r, d: digest(r, P) }));
+    const fixes = all.flatMap(({ r, d }) => d.items.filter((i) => i[0] === 'fix').map((i) => '<b>' + esc(r.name) + ':</b> ' + i[1]));
+    const watches = all.reduce((a, { d }) => a + d.items.filter((i) => i[0] === 'watch').length, 0);
+    const sub = P.regions.filter((r) => r.status === 'Submitted').length;
+    const worst = P.regions.slice().sort((a, b) => b.gap - a.gap)[0];
+    return '<div class="box hqd"><h3>Regional digest</h3><p>' + sub + ' of ' + P.regions.length + ' regions submitted. Regional programs cover ' + coverCell(P.roll.coverage) + ' of what regions owe, leaving ' + fmtInt(P.roll.gap) + ' MQLs (' + money(P.roll.gap * (P.tot.mql ? P.tot.pipe / P.tot.mql : 0)) + ' pipeline) uncovered' +
+      (worst && worst.gap > 0.5 ? '. The biggest gap is ' + esc(worst.name) + ' at ' + fmtInt(worst.gap) + ' MQLs' : '') + '. ' + watches + ' smaller item' + (watches === 1 ? '' : 's') + ' to watch are in each region below.</p>' +
+      (fixes.length ? '<b>Act on first</b><ul>' + fixes.slice(0, 4).map((f) => '<li>' + f + '</li>').join('') + '</ul>' : '<p class="note">Nothing to fix.</p>') + '</div>';
+  }
+  let aiKey = '';
+  async function askClaude(name) {
+    const P = compute(), r = P.regions.find((x) => x.name === name); if (!r || !aiKey) return;
+    const d = digest(r, P);
+    const ctx = {
+      plan: { name: S.name, fiscalYear: S.fy, products: S.product, pipelineTarget: P.tot.pipe, mqlTarget: Math.round(P.tot.mql), months: P.labels, launches: S.moments, salesCycleDays: num(S.cycle) },
+      region: { name: r.name, share: +(r.w * 100).toFixed(1), mqlTarget: Math.round(r.mql), fromHqPrograms: Math.round(r.fromHq), owesFromOwnPrograms: Math.round(r.owes), committed: Math.round(r.committed), budget: Math.round(r.spend), adaptingLocally: r.plan.adapt, programs: r.plan.programs },
+      ruleChecks: d.items.map((i) => i[0] + ': ' + i[1].replace(/<[^>]+>/g, ''))
+    };
+    toast('Asking Claude about ' + name + '…');
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': aiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 700, messages: [{ role: 'user', content:
+          'You are a VP of demand generation reviewing a regional marketing plan against the global plan. In 5 short bullets (plain text, start each with "- "), say what is strong, what is at risk, and the specific actions the regional lead should take before the plan is approved. Be concrete with numbers and months. No preamble.\n\n' + JSON.stringify(ctx) }] })
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error((j.error && j.error.message) || 'Request failed');
+      regionPlan(name).ai = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n').trim();
+      changed(false); toast('Claude\'s read added to ' + name);
+    } catch (e) { toast('Claude request failed: ' + e.message); }
+  }
+
   function planBlock(name) {
     const pl = regionPlan(name);
     return PLAN_TAG + '\n' + JSON.stringify({ plan: S.name || '', region: name, status: pl.status, adapt: pl.adapt, programs: pl.programs });
@@ -358,6 +524,7 @@
       adapt: String(d.adapt || ''),
       programs: (Array.isArray(d.programs) ? d.programs : []).map((x) => ({ name: String(x.name || ''), month: num(x.month), budget: num(x.budget), mql: num(x.mql) }))
     };
+    if (S.regionPlans[d.region]) S.regionPlans[d.region].file = 'pasted plan';
     rpSel = d.region; $('in-rp-paste').value = '';
     changed(true); toast(d.region + ' plan added to the roll-up');
   }
@@ -440,18 +607,18 @@
       const sections = P.regions.map((r) => {
         const progs = (r.plan.programs || []).filter((x) => x.name || num(x.mql));
         const list = progs.length ? '<ul>' + progs.map((x) => '<li>' + esc(x.name || 'Untitled') + ' <span class="note">· month ' + fmtInt(num(x.month)) + ' (' + (P.labels[Math.round(num(x.month)) - 1] || '?') + ') · ' + money(num(x.budget)) + ' · ' + fmtInt(num(x.mql)) + ' MQLs</span></li>').join('') + '</ul>' : '<p class="note">No regional programs yet.</p>';
-        return '<div class="box region' + (r.status === 'Not started' ? ' empty' : '') + '"><div class="rhead"><h3>' + esc(r.name) + '</h3>' + statusPill(r.status) + '</div>' +
+        return '<div class="box region' + (r.status === 'Not started' ? ' empty' : '') + '" id="rg-' + slug(r.name) + '"><div class="rhead"><h3>' + esc(r.name) + '</h3>' + statusPill(r.status) + '</div>' +
           '<p class="note">' + pct(r.w * 100) + ' of the number · ' + money(r.pipe) + ' pipeline · ' + fmtInt(r.mql) + ' MQLs' + (r.lead ? ' · owned by ' + esc(r.lead) : '') + '</p>' +
           '<div><b>HQ delivers</b> ' + fmtInt(r.fromHq) + ' MQLs from global programs</div>' +
           '<div><b>Region owes</b> ' + fmtInt(r.owes) + ' MQLs from its own programs</div>' + list +
           (r.plan.adapt ? '<div><b>Adapting locally</b> ' + esc(r.plan.adapt) + '</div>' : '') +
-          '<div class="' + (r.gap > 0.5 ? 'gap' : 'ok') + '">' + (r.gap > 0.5 ? 'Gap: ' + fmtInt(r.gap) + ' MQLs' : 'Covered') + ' · ' + coverCell(r.coverage) + ' coverage</div></div>';
+          '<div class="' + (r.gap > 0.5 ? 'gap' : 'ok') + '">' + (r.gap > 0.5 ? 'Gap: ' + fmtInt(r.gap) + ' MQLs' : 'Covered') + ' · ' + coverCell(r.coverage) + ' coverage</div>' + digestBox(r, P) + '</div>';
       }).join('');
-      return '<div><h2>Regional plans</h2><p class="lead">HQ owns the strategy, message, platforms and measurement. Each region owns its slice of the number and enters its own programs in the left pane, under Regional plans. Tap a region to see how its numbers are built.</p></div>' +
+      return '<div><h2>Regional plans</h2><p class="lead">HQ owns the strategy, message, platforms and measurement. Each region owns its slice of the number and uploads its plan in the left pane, under Regional plans. Each upload gets a digest that checks it against the global plan. Tap a region to see how its numbers are built.</p></div>' +
         '<div class="out"><table class="t" data-export><thead><tr><th>Region</th><th>Status</th><th class="n">Pipeline</th><th class="n">MQL target</th><th class="n">From HQ programs</th><th class="n">Region owes</th><th class="n">Committed</th><th class="n">Regional budget</th><th class="n">Coverage</th><th class="n">Gap</th></tr></thead><tbody>' + rows +
         '</tbody><tfoot><tr><td>Total</td><td>' + P.regions.filter((r) => r.status === 'Submitted').length + ' of ' + P.regions.length + ' submitted</td><td class="n">' + money(P.tot.pipe) + '</td><td class="n">' + fmtInt(R.mql) + '</td><td class="n">' + fmtInt(R.fromHq) + '</td><td class="n">' + fmtInt(R.owes) + '</td><td class="n">' + fmtInt(R.committed) + '</td><td class="n">' + money(R.spend) + '</td><td class="n">' + coverCell(R.coverage) + '</td><td class="n">' + fmtInt(R.gap) + '</td></tr></tfoot></table></div>' +
         '<p class="note">HQ programs: ' + hq + '. Region-run programs: ' + own + '. Change who runs a program in Channels &amp; programs.</p>' +
-        '<div class="regions">' + sections + '</div>' +
+        hqDigest(P) + '<div class="regions">' + sections + '</div>' +
         '<div class="box"><h3>Keep consistent vs adapt</h3><div class="split"><div><b>Keep consistent</b><ul><li>Positioning and campaign theme</li><li>Target account criteria and ABM tiers</li><li>Brand and creative system</li><li>Funnel definitions and attribution</li></ul></div><div><b>Adapt by region</b><ul><li>Language and local proof points</li><li>Channel mix and offers</li><li>Timing around local seasons and holidays</li><li>Compliance, such as GDPR in EMEA</li></ul></div></div></div>';
     },
     quarters(P) {
@@ -730,6 +897,14 @@
     $('btn-csv').onclick = () => { const d = tableData(); if (!d) return toast('No table on this tab'); copyText(d.map((r) => r.map((c) => /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c).join(',')).join('\n'), 'CSV copied'); };
     $('btn-reset').onclick = () => { S = example(); save(); bindInputs(); $('example-pill').hidden = false; render(); toast('Example reloaded'); };
     $('btn-blank').onclick = () => { S = blank(); save(); bindInputs(); $('example-pill').hidden = true; render(); toast('Started a blank plan'); };
+    $('in-rp-file').onchange = (e) => uploadPlan(e.target.files[0]);
+    $('btn-rp-template').onclick = () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([templateCsv()], { type: 'text/csv' }));
+      a.download = slug(rpSel || 'region') + '-plan-template.csv'; document.body.appendChild(a); a.click(); a.remove();
+    };
+    $('in-ai-key').oninput = (e) => { aiKey = e.target.value.trim(); render(); };
+    $('panel').addEventListener('click', (e) => { const b = e.target.closest('button[data-ai]'); if (b) askClaude(b.dataset.ai); });
     $('btn-rp-copy').onclick = () => { if (rpSel) copyText(planBlock(rpSel), rpSel + ' plan copied. Send it to HQ'); };
     $('btn-rp-import').onclick = () => { const v = $('in-rp-paste').value.trim(); if (v) importPlan(v); else toast('Paste a plan first'); };
     $('panel').addEventListener('click', (e) => {

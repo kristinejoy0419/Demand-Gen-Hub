@@ -22,7 +22,7 @@ It's a static site with no build step.
 6. **ABM tiers:** accounts per tier, share of pipeline and the play for each tier.
 7. **Channels & programs:** email, webinars, events, content, SEO, AEO/GEO (AI answer engines), paid, partner, SDR plays and in-product signals. Each has an owner, funnel stage, motion (always-on, burst or both), who runs it (HQ, region or both), share of sourced pipeline and cost per MQL.
 8. **Launch moments:** launches, events and buying seasons by plan month. They drive the bursts.
-9. **Regional plans:** each regional lead picks their region, sets a status (not started, draft, submitted), enters their own programs (month, budget, MQLs) and what they adapt locally. *Copy my plan* puts the plan on the clipboard to send to HQ; HQ pastes it under *Paste a region's plan* and it lands in the roll-up.
+9. **Regional plans:** each regional lead picks their region and uploads their plan as a CSV or Excel file (one row per program with program, month, budget and MQL columns, in any order; month can be a plan month number, a month name or a date). A template and a [sample LATAM plan](samples/latam-plan.csv) are linked in the pane. Programs can then be edited in place, along with the status and what the region adapts locally. Plans can also be shared by copy and paste.
 10. **Risks & contingencies:** each risk's status (on track, watching, triggered), likelihood, pipeline at risk, owner, early warning signal, trigger threshold, contingency plan and what we do now to prevent it.
 
 ## Outputs (tabs)
@@ -32,7 +32,7 @@ It's a static site with no build step.
 | Summary | Pipeline target, SQOs, MQLs, program budget, plan health flags, product mix, the reverse funnel and MQLs by month |
 | Quarterly plan | MQLs, SQOs, pipeline and budget by quarter, plus pipeline by region and by segment for each quarter |
 | Funnel by segment | Pipeline, SQOs, MQLs, leads and bookings for each segment |
-| Regional plans | A roll-up of each region's target, what HQ programs deliver, what the region owes, what it has committed, coverage and gap, then one section per region |
+| Regional plans | A roll-up of each region's target, what HQ programs deliver, what the region owes, what it has committed, coverage and gap. A regional digest lists what to act on first, then each region's section has its own digest that checks the plan against the global plan: coverage, budget, cost per MQL, SDR capacity, launch timing and late-year pipeline. With an Anthropic API key (kept in the browser tab, never saved), each region can also get a Claude-written read |
 | Channel mix | Each program's share of pipeline, MQLs, SQOs, budget and pipeline-to-spend ratio |
 | Buying committee & ABM | The message and offer by role and stage, plus pipeline by ABM tier and per account |
 | Calendar | MQLs by program and month, with always-on programs flat and bursts on launch moments |

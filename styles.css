@@ -194,3 +194,16 @@ tr.why>td{background:var(--sunk);padding:0}
 .whybox dl{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:13px}
 .whybox dt{font-weight:600;color:var(--muted)}
 .whybox dd{margin:0;white-space:normal}
+
+.upload{border:1px dashed var(--accent);border-radius:10px;padding:10px 12px;background:var(--accent-soft);display:flex;flex-direction:column;gap:6px}
+.upload input[type=file]{background:var(--surface)}
+.linkbtn{font:inherit;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+details.sub{border-top:1px solid var(--line);padding-top:8px}
+details.sub>summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px}
+details.sub[open]{display:flex;flex-direction:column;gap:8px}
+.digest{border-top:1px solid var(--line);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:8px}
+.digest .dhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.digest p{margin:0}
+.aidig{background:var(--sunk);border-radius:10px;padding:10px 12px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.hqd{background:var(--accent-soft);border-color:var(--hero-line)}
+.hqd p{margin:0}
