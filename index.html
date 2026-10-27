@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Demand Gen Hub</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&family=Playfair+Display+SC:wght@400;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">GTM strategy → integrated demand gen plan</div>
+      <h1>Demand Gen Hub</h1>
+      <div class="sub">Start from the pipeline number, work back to the funnel, then plan the channels, buying committee, calendar and owners that deliver it. Paid media is one workstream, handed off as a brief.</div>
+    </div>
+    <div class="example" id="example-pill">Example loaded: illustrative AI work platform, IT launch year</div>
+  </header>
+
+  <div class="grid">
+    <aside class="rail" aria-label="Plan inputs">
+      <details class="card" open>
+        <summary><h3>1 · Campaign &amp; brief</h3><small>what we're launching</small></summary>
+        <div class="body">
+          <div class="row">
+            <label class="f">Campaign name<input id="in-name"></label>
+            <label class="f">Fiscal year<input id="in-fy"></label>
+          </div>
+          <label class="f">Products or solutions in scope<input id="in-product"></label>
+          <label class="f">GTM brief notes<textarea id="in-brief" rows="4"></textarea></label>
+        </div>
+      </details>
+
+      <details class="card" open>
+        <summary><h3>2 · Pipeline goal &amp; funnel</h3><small>work back from the number</small></summary>
+        <div class="body">
+          <div class="row">
+            <label class="f">Marketing-sourced pipeline target ($)<input id="in-goal" type="number" min="0" step="100000"></label>
+            <label class="f">Plan start<input id="in-start" type="month"></label>
+          </div>
+          <div class="row">
+            <label class="f">Lead → MQL %<input id="in-r1" type="number" min="0.1" max="100" step="0.5"></label>
+            <label class="f">SQO → closed-won %<input id="in-r3" type="number" min="0.1" max="100" step="0.5"></label>
+            <label class="f">Sales cycle (days)<input id="in-cycle" type="number" min="1" step="5"></label>
+          </div>
+          <p class="hint">MQL → SQO rate and deal size are set per segment below.</p>
+        </div>
+      </details>
+
+      <details class="card" open>
+        <summary><h3>3 · Segments</h3><small>share · deal size · conversion</small></summary>
+        <div class="body"><div id="ed-segments"></div></div>
+      </details>
+
+      <details class="card">
+        <summary><h3>4 · Regions</h3><small>share of the global number</small></summary>
+        <div class="body"><div id="ed-regions"></div><p class="hint">Shares are rebalanced to 100% in the plan.</p></div>
+      </details>
+
+      <details class="card">
+        <summary><h3>5 · Buying committee</h3><small>role · message by stage</small></summary>
+        <div class="body"><div id="ed-personas"></div></div>
+      </details>
+
+      <details class="card">
+        <summary><h3>6 · ABM tiers</h3><small>accounts · play</small></summary>
+        <div class="body"><div id="ed-tiers"></div></div>
+      </details>
+
+      <details class="card" open>
+        <summary><h3>7 · Channels &amp; programs</h3><small>owner · motion · share</small></summary>
+        <div class="body"><div id="ed-channels"></div><p class="hint">Share is each program's slice of sourced pipeline. Enabled programs are rebalanced to 100%. Cost per MQL drives the program budget.</p></div>
+      </details>
+
+      <details class="card">
+        <summary><h3>8 · Launch moments</h3><small>drive the bursts</small></summary>
+        <div class="body"><div id="ed-moments"></div><p class="hint">Month 1 is the plan start. Launches lift that month and the next; events and buying seasons lift their own month.</p></div>
+      </details>
+
+      <div class="btns">
+        <button class="btn" id="btn-reset" type="button">Reload example</button>
+        <button class="btn" id="btn-blank" type="button">Start blank</button>
+      </div>
+    </aside>
+
+    <section class="main" aria-label="Plan">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="toolbar">
+        <button class="btn" id="btn-copy" type="button">Copy table</button>
+        <button class="btn" id="btn-csv" type="button">Copy as CSV</button>
+      </div>
+      <div class="panel" id="panel"></div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
