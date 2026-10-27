@@ -774,7 +774,7 @@
     const w = $('setup-wizard'); if (!w) return;
     if (w.contains(document.activeElement) && document.activeElement.dataset.wzQ != null) return; // don't wipe an answer mid-typing
     w.innerHTML = wizardHtml(false);
-    const b = $('btn-fill-brief'); if (b) b.disabled = !aiKey || busy;
+    const b = $('btn-fill-brief'); if (b) b.disabled = busy;
   }
 
   // the brief as Claude reads it: a PDF goes in as a document, everything else as text
@@ -840,9 +840,9 @@
     });
   }
   async function runAgent(answers) {
-    if (!aiKey) return toast('Add a Gemini or Anthropic key first');
+    if (!aiKey) { setAgentStatus('Add a Gemini or Anthropic key above first. A free Gemini key from Google AI Studio works.'); const k = $('in-ai-key-brief'); if (k && !k.closest('label').hidden) k.focus(); return; }
     const pasted = ($('in-brief-paste').value || '').trim();
-    if (!answers && !briefDoc && !pasted) return toast('Upload or paste your GTM brief first');
+    if (!answers && !briefDoc && !pasted) { setAgentStatus('Upload or paste your GTM brief first, or use Try a sample brief.'); $('in-brief-paste').focus(); return; }
     const pdf = !answers && briefDoc && briefDoc.pdf ? briefDoc.pdf : null;
     let ask = '';
     if (answers) ask = 'The planner answered your questions. Update the plan from these answers and list what is still missing.\n\n' + answers.map((m) => 'Q: ' + m.question + '\nA: ' + m.answer).join('\n\n');
@@ -853,6 +853,7 @@
       applyBrief(JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, '')), answers);
       setAgentStatus('');
       toast(answers ? 'Plan updated from your answers' : 'Plan filled from the brief');
+      startWalk();
     } catch (e) { setAgentStatus(aiName() + ' could not finish: ' + e.message); }
     busy = false; renderWizard();
   }
@@ -888,6 +889,36 @@
     };
     $('example-pill').hidden = true;
     save(); bindInputs(); render();
+  }
+
+
+  // after a fill, walk the planner through each section that still needs input, one card at a time
+  const REQUIRED = SETUP.filter((x) => x[0] !== 'regional').map((x) => x[0]);
+  let walkAt = null;
+  function openCard(slug) {
+    const card = document.querySelector('.rail [data-card="' + slug + '"]'); if (!card) return;
+    if (!editing) setEditing(true);
+    if (getComputedStyle($('btn-open-rail')).display !== 'none') $('btn-open-rail').click();
+    card.open = true; card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
+  }
+  function walkTo(id) { walkAt = id; renderWalk(); const st = SETUP.find((x) => x[0] === id); if (st) openCard(st[1]); }
+  function nextGap(after) {
+    const st = setupState().filter((x) => REQUIRED.includes(x.id)), i = st.findIndex((x) => x.id === after);
+    return st.slice(i + 1).concat(st.slice(0, i + 1)).find((x) => x.gap && x.id !== after);
+  }
+  function startWalk() { const n = setupState().find((x) => x.gap && REQUIRED.includes(x.id)); if (n) walkTo(n.id); else { walkAt = null; renderWalk(); openCard('setup'); } }
+  function renderWalk() {
+    document.querySelectorAll('.wz-step').forEach((x) => x.remove());
+    if (!walkAt) return;
+    const st = setupState(), cur = st.find((x) => x.id === walkAt); if (!cur) return;
+    const body = document.querySelector('.rail [data-card="' + cur.card + '"] .body'); if (!body) return;
+    const left = st.filter((x) => x.gap && REQUIRED.includes(x.id)), nx = nextGap(cur.id);
+    const q = ((S.setup || {}).missing || []).filter((m) => !m.done && m.step === cur.id).map((m) => '<span class="note">' + esc(S.setup.by || 'The AI') + ' asks: ' + esc(m.question) + '</span>').join('');
+    const html = cur.gap
+      ? '<b>Fill this in</b><span>Needs ' + esc(cur.gap) + '.</span>' + q + '<div class="btns">' + (nx ? '<button type="button" class="btn" data-walk="' + nx.id + '">Skip to ' + esc(nx.label) + '</button>' : '') + '<button type="button" class="linkbtn" data-walk="stop">Stop the walkthrough</button></div>'
+      : '<b>✓ ' + esc(cur.label) + ' is done</b>' + (nx ? '<span>' + left.length + ' section' + (left.length === 1 ? '' : 's') + ' still need' + (left.length === 1 ? 's' : '') + ' input.</span><div class="btns"><button type="button" class="btn primary" data-walk="' + nx.id + '">Next: ' + esc(nx.label) + '</button></div>' : '<span>Every required section is filled. The plan is ready to read.</span><div class="btns"><button type="button" class="btn primary" data-walk="stop">See the plan</button></div>');
+    body.insertAdjacentHTML('afterbegin', '<div class="wz-step' + (cur.gap ? '' : ' ok') + '"><span class="wz-k">Setup ' + (REQUIRED.length - left.length) + ' of ' + REQUIRED.length + '</span>' + html + '</div>');
   }
 
   function changed(rebind) {
@@ -964,7 +995,7 @@
   }
   const go = (k, l) => '<button type="button" class="linkbtn" data-go="' + k + '">' + l + '</button>';
   const GUIDES = {
-    onepage: ['Start with the hero number and whether it covers what sales needs.', 'The campaigns table shows which campaigns carry the number and when each launches. Open ' + go('campaigns', 'Campaigns') + ' for the full plan behind each one.', 'Anything flagged under "Needs attention" links to the tab that explains it.', 'Building your own plan? Open ' + '<button type="button" class="linkbtn" data-open-card="setup">Start here: GTM brief</button>' + ' to upload your brief. Claude fills the plan and tells you what is still missing.'],
+    onepage: ['Start with the hero number and whether it covers what sales needs.', 'The campaigns table shows which campaigns carry the number and when each launches. Open ' + go('campaigns', 'Campaigns') + ' for the full plan behind each one.', 'Anything flagged under "Needs attention" links to the tab that explains it.', 'Building your own plan? Open ' + '<button type="button" class="linkbtn" data-open-card="setup">Start here: GTM brief</button>' + ' to upload your brief. The AI fills the plan, then walks you through each section that still needs input.'],
     campaigns: ['Each card is one campaign: its theme, hero offer, audience, and the share of pipeline it owns.', 'Open a campaign to see the programs that carry it and the milestones worked back from launch.', 'Click any month on a timeline to see what lands that month and why it is flagged.'],
     funnel: ['Each segment works the number backwards: pipeline, then SQOs, MQLs and leads.', 'Tap Enterprise or Commercial to see the campaigns and program buys that make up its number, and how the math is built.'],
     channels: ['Every program a campaign runs on, with its MQLs, cost per MQL, budget and pipeline.', 'Check who runs each one (HQ, shared or region) and who owns it.'],
@@ -1001,7 +1032,7 @@
       if (a && card.contains(a) && document.activeElement !== a) { a.focus({ preventScroll: true }); if (sel) try { a.setSelectionRange(sel[0], sel[1]); } catch (e) { /* not a text field */ } }
     }
     if (tab === 'owners') bindRaci();
-    renderWizard();
+    renderWizard(); renderWalk();
   }
 
   const VIEWS = {
@@ -1945,11 +1976,13 @@
     document.addEventListener('click', (e) => { const b = e.target.closest('[data-goexec]'); if (!b) return; tab = b.dataset.goexec; renderTabs(); render(); if (window.innerWidth < 900 && $('btn-close-rail')) $('btn-close-rail').click(); $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     document.addEventListener('click', (e) => {
       const b = e.target.closest('[data-open-card]'); if (!b) return;
-      const card = document.querySelector('.rail [data-card="' + b.dataset.openCard + '"]'); if (!card) return;
-      if (!editing) setEditing(true);
-      if (getComputedStyle($('btn-open-rail')).display !== 'none') $('btn-open-rail').click();
-      card.open = true; card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
+      const st = SETUP.find((x) => x[1] === b.dataset.openCard);
+      if (st && REQUIRED.includes(st[0]) && b.closest('.wz, .wz-op')) walkTo(st[0]); else openCard(b.dataset.openCard);
+    });
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-walk]'); if (!b) return;
+      if (b.dataset.walk === 'stop') { walkAt = null; renderWalk(); if (editing) $('btn-edit').click(); tab = 'onepage'; renderTabs(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      else walkTo(b.dataset.walk);
     });
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-print') window.print(); });
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-brief') copyText($('brief-text').innerText, 'Brief copied'); });
