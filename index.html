@@ -17,7 +17,10 @@
       <h1>Demand Gen Hub</h1>
       <div class="sub">Start from the pipeline number, work back to the funnel, then plan the channels, buying committee, calendar and owners that deliver it. Paid media is one workstream, handed off as a brief.</div>
     </div>
-    <div class="example" id="example-pill">Example loaded: illustrative AI work platform, IT launch year</div>
+    <div class="hero-side">
+      <div class="spider" id="hero-spider"></div>
+      <div class="example" id="example-pill">Example loaded: illustrative AI work platform, IT launch year</div>
+    </div>
   </header>
 
   <div class="grid">
@@ -161,7 +164,7 @@
         </div>
       </details>
 
-      <div class="rail-group">Run it</div>
+      <div class="rail-group">Execution</div>
       <details class="card">
         <summary><h3>Risks &amp; contingencies</h3><small>signal · trigger · plan</small></summary>
         <div class="body"><div id="ed-risks"></div></div>
@@ -191,8 +194,20 @@
     <section class="main" aria-label="Plan">
       <div class="tabs" role="tablist" id="tabs"></div>
       <div class="toolbar">
-        <button class="btn" id="btn-copy" type="button">Copy table</button>
-        <button class="btn" id="btn-csv" type="button">Copy as CSV</button>
+        <details class="export" id="export">
+          <summary class="btn">Export this tab</summary>
+          <div class="menu" role="menu">
+            <div class="mgroup">PDF</div>
+            <button type="button" role="menuitem" data-ex="pdf">Save as PDF<span>Opens print, choose Save as PDF</span></button>
+            <div class="mgroup">Google Sheets or Excel</div>
+            <button type="button" role="menuitem" data-ex="sheets">Copy for Google Sheets<span>Paste into cell A1 of a sheet</span></button>
+            <button type="button" role="menuitem" data-ex="xlsx">Download Excel (.xlsx)<span>Every table on this tab, one sheet each. Opens in Google Sheets.</span></button>
+            <button type="button" role="menuitem" data-ex="csv">Download CSV<span>The main table only</span></button>
+            <div class="mgroup">Google Docs or Word</div>
+            <button type="button" role="menuitem" data-ex="docs">Copy for Google Docs<span>Paste into a doc, with headings and tables</span></button>
+            <button type="button" role="menuitem" data-ex="doc">Download Word (.doc)<span>Opens in Word or Google Docs</span></button>
+          </div>
+        </details>
       </div>
       <div class="panel" id="panel"></div>
     </section>
