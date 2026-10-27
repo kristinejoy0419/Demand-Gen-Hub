@@ -723,6 +723,61 @@
     return ((c.content && c.content.parts) || []).filter((x) => !x.thought).map((x) => x.text || '').join('').trim();
   }
   const GEMINI_MODEL = 'gemini-3.8-flash';
+
+  /* ---------- leadership asks: an agent drafts the email or Slack message ---------- */
+  const HUB_URL = 'https://kristinejoy0419.github.io/Demand-Gen-Hub/';
+  const hubLink = (t) => (/^https?:/.test(location.href) ? location.href.split('#')[0] : HUB_URL) + '#tab=' + t;
+  // where in the tracker the evidence for an ask lives, and the numbers that make the case
+  function askRef(a, P) {
+    const t = (a.ask + ' ' + a.why).toLowerCase(), hs = health(P).map((h) => h[1]);
+    const find = (re) => hs.find((h) => re.test(h)) || '';
+    if (/sdr|sales dev|overflow|routing|headcount/.test(t)) return { tab: 'onepage', path: 'Overview → Plan on a page → What needs attention', fact: find(/sdr/i) || 'MQL volume in launch months is above what the SDR team can work.' };
+    if (/paid|shared serv|flight|media/.test(t)) { const pd = P.channels.find((c) => c.id === 'paid'); return { tab: 'owners', path: 'More → Team & owners (SLAs), with the handoff on More → Paid brief', fact: pd ? 'Paid carries ' + pct(pd.w * 100) + ' of sourced pipeline (' + money(pd.pipe) + ') but sits outside the team.' : '' }; }
+    if (/latam|emea|apj|region|cover/.test(t)) return { tab: 'regions', path: 'Regions → Regional plans', fact: find(/region/i) };
+    if (/definition|sourced|influenced|pql|handoff|attribution/.test(t)) return { tab: 'measure', path: 'More → Measurement', fact: 'Expansion pipeline depends on product signals reaching sales, and on one agreed definition of sourced pipeline.' };
+    if (/budget|fund|\$|spend/.test(t)) return { tab: 'scenarios', path: 'Execution → Scenarios & asks → Budget scenarios', fact: 'The ' + money(P.budget) + ' program budget delivers ' + money(P.tot.pipe) + ' sourced pipeline (' + (P.budget ? (P.tot.pipe / P.budget).toFixed(1) : '–') + 'x pipeline to spend). The budget scenarios show what each cut costs.' };
+    return { tab: 'scenarios', path: 'Execution → Scenarios & asks', fact: '' };
+  }
+  const drafts = {}; // ask index -> { kind, subject, body, by, busy }
+  function askTemplate(a, P, kind) {
+    const r = askRef(a, P), by = num(a.by) ? (P.labels[Math.round(num(a.by)) - 1] || '') : '';
+    const end = (t) => String(t || '').replace(/\s*·\s*/g, ', ').trim().replace(/([^.!?])$/, '$1.');
+    const why = end(a.why), w4 = why.split(' ').slice(0, 4).join(' ').toLowerCase();
+    // skip the plan fact when it only repeats the reason
+    const fact = r.fact && !r.fact.toLowerCase().startsWith(w4) ? ' ' + end(r.fact) : '';
+    const ask = end(a.ask);
+    if (kind === 'slack') return { subject: '', body: 'Hi [Name], one ask for ' + (S.name || 'our plan') + (by ? ', needed by ' + by : '') + ': ' + ask + '\n' + why + fact + '\nDetail in the tracker under ' + r.path + ': ' + hubLink(r.tab) + '\nHappy to talk it through.' };
+    return { subject: 'Decision needed' + (by ? ' by ' + by : '') + ': ' + a.ask.split(/[:,]/)[0], body: 'Hi [Name],\n\nTo keep ' + (S.name || 'the plan') + ' on track, I need one decision from you' + (by ? ' by ' + by : '') + ':\n\n' + ask + '\n\n' + why + fact + '\n\nThe detail is in the Demand Gen Hub under ' + r.path + ': ' + hubLink(r.tab) + '\n\nHappy to walk through it in 15 minutes this week.\n\nThanks,\n[Your name]' };
+  }
+  async function draftAsk(i, kind) {
+    const a = S.asks[i]; if (!a) return;
+    const P = extend(compute()), r = askRef(a, P);
+    drafts[i] = Object.assign(askTemplate(a, P, kind), { kind, by: 'the plan', busy: !!aiKey });
+    render();
+    if (!aiKey) return;
+    try {
+      const ctx = { plan: S.name, fiscalYear: S.fy, pipelineTarget: money(P.tot.pipe), programBudget: money(P.budget), ask: a.ask, askedOf: a.who, neededBy: num(a.by) ? P.labels[Math.round(num(a.by)) - 1] : '', whyItMatters: a.why, evidenceFromThePlan: r.fact, trackerLocation: r.path, trackerLink: hubLink(r.tab) };
+      const out = await callAI({ maxTokens: 1200, schema: { type: 'object', properties: { subject: { type: 'string' }, body: { type: 'string' } }, required: ['subject', 'body'], additionalProperties: false },
+        system: 'You are a Head of Global Campaigns writing to a senior leader. Write at an executive level: brief, confident, specific, no jargon or filler, no markdown.',
+        text: (kind === 'slack' ? 'Draft a Slack message (no subject, set subject to an empty string), at most 70 words. Open with the ask, give the date, one line on why with a number, then the tracker location and link on their own line. Greet them as [Name].'
+          : 'Draft an email of at most 120 words. Lead with the decision needed and the date, give one or two lines of business impact using the numbers provided, then point to the tracker location by name with the link, and close by offering a short call. Greet them as [Name] and sign off as [Your name].') +
+          ' Use only the facts below. Do not invent numbers.\n\n' + JSON.stringify(ctx, null, 1) });
+      const j = JSON.parse(out.replace(/^```(json)?|```$/g, ''));
+      drafts[i] = { kind, subject: j.subject || drafts[i].subject, body: j.body || drafts[i].body, by: aiName(), busy: false };
+    } catch (e) { drafts[i].busy = false; drafts[i].err = aiName() + ' could not draft it (' + e.message + '), so this one is written from the plan.'; }
+    render();
+  }
+  function draftBox(i) {
+    const d = drafts[i]; if (!d) return '';
+    const a = S.asks[i];
+    return '<div class="mail" data-mail="' + i + '"><div class="mail-h"><b>' + (d.kind === 'slack' ? 'Slack message' : 'Email') + ' to ' + esc(a.who) + '</b><span class="note">' + (d.busy ? esc(aiName()) + ' is drafting…' : 'Drafted by ' + esc(d.by)) + '</span></div>' +
+      (d.err ? '<p class="note">' + esc(d.err) + '</p>' : '') +
+      (d.kind === 'slack' ? '' : '<label class="f">Subject<input type="text" data-mail-f="subject" value="' + esc(d.subject) + '"></label>') +
+      '<textarea data-mail-f="body" rows="' + (d.kind === 'slack' ? 7 : 14) + '" aria-label="Message">' + esc(d.body) + '</textarea>' +
+      '<div class="btns"><button type="button" class="btn primary" data-mail-copy="' + i + '">Copy</button>' + (d.kind === 'slack' ? '' : '<button type="button" class="btn" data-mail-open="' + i + '">Open in email</button>') +
+      '<button type="button" class="linkbtn" data-mail-close="' + i + '">Close</button></div>' + (aiKey ? '' : '<p class="note">Written from the plan. Add an AI key under Start here and the agent writes it for you.</p>') + '</div>';
+  }
+  const askBtns = (i) => '<span class="askbtns"><button type="button" class="linkbtn" data-draft="' + i + '-email">Draft email</button><button type="button" class="linkbtn" data-draft="' + i + '-slack">Draft Slack</button></span>';
   async function askClaude(name) {
     const P = compute(), r = P.regions.find((x) => x.name === name); if (!r || !aiKey) return;
     const d = digest(r, P);
@@ -1700,7 +1755,7 @@
       const camps = P.camps.map((c) => '<tr><td><b>' + esc(c.name) + '</b><div class="note">' + esc(c.offer) + '</div></td><td>' + esc(c.tier) + '</td><td>' + (P.labels[Math.round(num(c.launch)) - 1] || '–') + '</td><td class="n">' + money(c.pipe) + '</td><td class="n">' + money(c.cost) + '</td></tr>').join('');
       const q = P.quarters.map((x) => '<td class="n">' + money(x.pipe) + '</td>').join('');
       const hl = health(P).filter((h) => h[0] !== 'ok').slice(0, 5).map(([k, s]) => hp(k, k === 'fix' ? 'Fix' : 'Watch') + '<span>' + esc(s) + '</span>').join('');
-      const asks = S.asks.slice(0, 4).map((a) => '<li><b>' + esc(a.ask) + '</b> <span class="note">· ' + esc(a.who) + (num(a.by) ? ' · by ' + (P.labels[Math.round(num(a.by)) - 1] || '') : '') + '</span></li>').join('');
+      const asks = S.asks.slice(0, 4).map((a, i) => '<li><b>' + esc(a.ask) + '</b> <span class="note">· ' + esc(a.who) + (num(a.by) ? ' · by ' + (P.labels[Math.round(num(a.by)) - 1] || '') : '') + '</span>' + askBtns(i) + draftBox(i) + '</li>').join('');
       const risks = P.risks.filter((r) => r.status !== 'On track').map((r) => '<li>' + riskPill(r.status) + ' ' + esc(r.risk) + '</li>').join('');
       const s80 = P.scen[0], s120 = P.scen[2];
       return '<div class="op-head"><div><h2>' + esc(S.name || 'Untitled plan') + '</h2><p class="lead">' + esc(S.fy) + ' plan on a page' + (S.product ? ' · ' + esc(S.product) : '') + '</p></div></div>' + (S.isExample || !setupState().some((x) => x.gap) ? '' : '<div class="box wz-op"><h3>Finish setting up the plan</h3>' + wizardHtml(true) + '</div>') +
@@ -1772,7 +1827,7 @@
     scenarios(P) {
       const rows = P.scen.map((s) => '<tr' + (s.f === 1 ? ' class="base"' : '') + '><td><b>' + Math.round(s.f * 100) + '% budget</b></td><td class="n">' + money(s.budget) + '</td><td class="n">' + money(s.pipe) + '</td><td class="n">' + (s.f === 1 ? '–' : (s.pipe >= P.tot.pipe ? '+' : '') + money(s.pipe - P.tot.pipe)) + '</td><td class="n">' + fmtInt(s.mql) + '</td><td class="n">' + (s.budget ? (s.pipe / s.budget).toFixed(1) + 'x' : '–') + '</td><td>' + (esc(s.moves.join('; ')) || 'Plan as built') + '</td></tr>').join('');
       const cut = P.cutList.map((x, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(x.c.name) + '</td><td class="n">' + money(x.c.cost) + '</td><td class="n">' + x.eff.toFixed(1) + 'x</td><td class="n">' + money(x.c.cost * 0.6 * x.eff) + '</td></tr>').join('');
-      const asks = S.asks.map((a) => '<tr><td><b>' + esc(a.ask) + '</b></td><td>' + esc(a.who) + '</td><td>' + (num(a.by) ? P.labels[Math.round(num(a.by)) - 1] || '' : '–') + '</td><td>' + esc(a.why) + '</td></tr>').join('') || '<tr><td colspan="4" class="note">No asks yet. Add them in the left pane.</td></tr>';
+      const asks = S.asks.map((a, i) => '<tr><td><b>' + esc(a.ask) + '</b>' + askBtns(i) + draftBox(i) + '</td><td>' + esc(a.who) + '</td><td>' + (num(a.by) ? P.labels[Math.round(num(a.by)) - 1] || '' : '–') + '</td><td>' + esc(a.why) + '</td></tr>').join('') || '<tr><td colspan="4" class="note">No asks yet. Add them in the left pane.</td></tr>';
       return '<div><h2>Scenarios &amp; asks</h2><p class="lead">What happens to pipeline if the budget moves, what gets cut first, and the decisions needed from leadership to deliver the plan.</p></div>' +
         '<h3>What I need from leadership</h3><div class="out"><table class="t" data-export><thead><tr><th>Ask or decision</th><th>From</th><th>By</th><th>Why it matters</th></tr></thead><tbody>' + asks + '</tbody></table></div>' +
         '<h3>Budget scenarios</h3><div class="out"><table class="t"><thead><tr><th>Scenario</th><th class="n">Budget</th><th class="n">Pipeline</th><th class="n">Change</th><th class="n">MQLs</th><th class="n">Pipe : spend</th><th>What changes</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
@@ -2138,6 +2193,15 @@
         S = fill(p); save(); bindInputs(); showPill(); render(); toast('Opened ' + (S.name || f.name)); } catch (x) { toast('Could not open that file: ' + x.message); }
     };
     $('in-actuals-file').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importActuals(f); };
+    $('panel').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-draft],[data-mail-copy],[data-mail-open],[data-mail-close]'); if (!b) return;
+      if (b.dataset.draft) { const [i, k] = b.dataset.draft.split('-'); draftAsk(+i, k); return; }
+      const i = +(b.dataset.mailCopy || b.dataset.mailOpen || b.dataset.mailClose), d = drafts[i]; if (!d) return;
+      if (b.dataset.mailClose != null) { delete drafts[i]; render(); return; }
+      if (b.dataset.mailCopy != null) { const t = (d.kind === 'slack' ? '' : 'Subject: ' + d.subject + '\n\n') + d.body; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Copied'), () => toast('Copy failed')); return; }
+      location.href = 'mailto:?subject=' + encodeURIComponent(d.subject) + '&body=' + encodeURIComponent(d.body);
+    });
+    $('panel').addEventListener('input', (e) => { const f = e.target.dataset.mailF, box = e.target.closest('[data-mail]'); if (f && box && drafts[box.dataset.mail]) drafts[box.dataset.mail][f] = e.target.value; });
     $('panel').addEventListener('toggle', (e) => { const d = e.target; if (d.matches && d.matches('details.camp') && d.open) campOpen = +d.dataset.camp; }, true);
     $('panel').addEventListener('click', (e) => {
       const b = e.target.closest('button[data-tl]'); if (!b) return;
@@ -2183,6 +2247,10 @@
 
   /* ---------- boot ---------- */
   try { const t = localStorage.getItem(STORE_KEY + ':tab'); if (t && TABS.some((x) => x[0] === t)) tab = t; } catch (e) { /* ignore */ }
+  // links from drafted emails open the tab they point to: #tab=regions
+  const fromHash = () => { const m = location.hash.match(/tab=(\w+)/); if (m && TABS.some((x) => x[0] === m[1])) { tab = m[1]; return true; } return false; };
+  fromHash();
+  window.addEventListener('hashchange', () => { if (fromHash()) { renderTabs(); render(); } });
   showPill();
   bindInputs(); renderTabs(); wire(); render();
 })();
