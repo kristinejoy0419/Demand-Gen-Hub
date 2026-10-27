@@ -154,3 +154,15 @@ table.t tfoot td{font-weight:700;border-bottom:none}
 svg text{fill:var(--muted);font-family:var(--f-body)}
 .toast{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600}
 @media (prefers-reduced-motion:no-preference){.fstep .bar i,.meter i{transition:width .3s ease}}
+
+.health{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 10px;align-items:start;font-size:13px}
+.hp{font-size:11px;font-weight:700;border-radius:999px;padding:2px 10px;text-align:center}
+.hp.fix{background:var(--over-soft);color:var(--over)}
+.hp.watch{background:var(--flag-soft);color:var(--flag)}
+.hp.ok{background:var(--good-soft);color:var(--good)}
+.regions{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.region .rhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.region h3{font-family:var(--f-display);font-size:19px;letter-spacing:-.01em}
+.region.empty{border-style:dashed}
+.region .gap{color:var(--over);font-weight:600}
+.region .ok{color:var(--good);font-weight:600}
