@@ -216,8 +216,13 @@ details.sub[open]{display:flex;flex-direction:column;gap:8px}
 tr.flagrow td{background:var(--over-soft)}
 
 /* grouped tabs and rail */
-.tgroup{align-self:center;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:0 4px 0 12px;white-space:nowrap}
-.tgroup:first-child{padding-left:2px}
+#tabs.tabs{display:flex;flex-direction:column;gap:6px;padding:12px 12px 0;overflow:visible}
+.sections{display:flex;flex-wrap:wrap;gap:6px}
+.sections::-webkit-scrollbar{display:none}
+.sec{font:inherit;font-size:12px;font-weight:600;white-space:nowrap;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:7px 14px;cursor:pointer}
+.sec:hover{border-color:var(--accent);color:var(--accent)}
+.sec[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.subtabs{display:flex;gap:2px;overflow-x:auto}
 .rail-group{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:6px 4px -4px}
 /* campaigns */
 details.camp{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
