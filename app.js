@@ -902,10 +902,10 @@
   function milestones(c) {
     const L = Math.round(num(c.launch)) || 1;
     const ms = [
-      ['Campaign brief', L - 3, 'Demand gen'], ['Messaging locked', L - 2, 'PMM'], ['Creative & assets', L - 1, 'Creative'],
-      ['Sales enablement', L - 1, 'PMM + Sales'], ['Launch', L, c.owner || 'Demand gen'], ['Retro & reset', L + 2, 'Demand gen + RevOps']
+      ['Campaign brief', L - 3, 'Demand gen', 'Brief'], ['Messaging locked', L - 2, 'PMM', 'Messaging'], ['Creative & assets', L - 1, 'Creative', 'Creative'],
+      ['Sales enablement', L - 1, 'PMM + Sales', 'Enablement'], ['Launch', L, c.owner || 'Demand gen', 'Launch'], ['Retro & reset', L + 2, 'Demand gen + RevOps', 'Retro']
     ];
-    if (chFor(c.programs).some((x) => x.id === 'paid')) ms.splice(3, 0, ['Paid flight brief', L - 1, 'Paid (shared svc)']);
+    if (chFor(c.programs).some((x) => x.id === 'paid')) ms.splice(3, 0, ['Paid flight brief', L - 1, 'Paid (shared svc)', 'Paid brief']);
     return ms;
   }
   function extend(P) {
@@ -969,11 +969,15 @@
   function hp(k, t) { return '<span class="hp ' + k + '">' + t + '</span>'; }
   function timeline(c, P) {
     const s = Math.max(1, Math.round(num(c.start)) || 1), e = Math.min(12, Math.max(s, Math.round(num(c.end)) || 12)), L = Math.round(num(c.launch)) || s;
-    const cells = P.labels.map((m, i) => {
-      const n = i + 1, on = n >= s && n <= e, ms = c.ms.filter((x) => x[1] === n);
-      return '<div class="tl' + (on ? ' on' : '') + (n === L ? ' launch' : '') + '" title="' + esc(m + (ms.length ? ': ' + ms.map((x) => x[0]).join(', ') : '')) + '"><span>' + m + '</span>' + (ms.length ? '<i></i>' : '') + '</div>';
+    const early = c.ms.filter((x) => x[1] < 1);
+    const col = (label, cls, ms) => '<div class="tlc"><div class="tl' + cls + '">' + label + '</div><div class="tlm">' + ms.map((x) => '<span>' + esc(x[3] || x[0]) + '</span>').join('') + '</div></div>';
+    const cells = (early.length ? col('Before', ' pre', early) : '') + P.labels.map((m, i) => {
+      const n = i + 1;
+      return col(m, (n >= s && n <= e ? ' on' : '') + (n === L ? ' launch' : ''), c.ms.filter((x) => x[1] === n));
     }).join('');
-    return '<div class="tlrow" aria-hidden="true">' + cells + '</div>';
+    return '<div class="tlwrap"><div class="tlhead"><b>Timeline</b><span class="note">In market ' + P.labels[s - 1] + '–' + P.labels[e - 1] + ' · launch ' + (P.labels[L - 1] || '–') + '</span>' +
+      '<span class="tlkey"><i class="k on"></i>In market <i class="k launch"></i>Launch <span class="tlmk">Milestones</span></span></div>' +
+      '<div class="tlscroll"><div class="tlrow" style="grid-template-columns:repeat(' + (12 + (early.length ? 1 : 0)) + ',minmax(56px,1fr))">' + cells + '</div></div></div>';
   }
   function campaignHealth(P) {
     const out = [];
