@@ -425,3 +425,7 @@ details.brief-box[open]>summary{margin-bottom:8px}
 .acts td:first-child,.msed td:first-child{width:36px;text-align:center}
 .msed td:first-child input{min-width:0;width:auto}
 tr.dim td{opacity:.6}
+.askbtns{display:flex;gap:14px;margin-top:4px;font-size:12px}
+.mail{margin:8px 0 4px;padding:12px;border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:8px;font-weight:400}
+.mail-h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.mail textarea,.mail input{width:100%;font:inherit;font-size:13px;padding:8px;border:1px solid var(--line);border-radius:6px;background:transparent;color:inherit;box-sizing:border-box}
