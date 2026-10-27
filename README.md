@@ -18,8 +18,10 @@ It's a static site with no build step.
 2. **Pipeline goal & funnel:** the sourced pipeline target, plan start month, lead → MQL rate, SQO → closed-won rate, sales cycle, and SDR headcount and capacity.
 3. **Segments:** share of the target, average deal size and MQL → SQO rate for each segment (for example Enterprise and Commercial).
 4. **Regions:** each region's share of the global number and who owns it.
-5. **Buying committee:** each role, its part in the deal, what it cares about, and the offer at the aware, consider and decide stages.
+5. **Buying committee:** each role, its part in the deal and what it cares about.
+- **Offers & assets:** one row per asset with its role, stage (aware, consider, decide), status (live, in production, missing), owner, due month, the regions that need it localized and the localization status.
 6. **ABM tiers:** accounts per tier, share of pipeline and the play for each tier.
+- **ABM by region:** each region's Tier 1, 2 and 3 accounts, account owner and next play.
 7. **Channels & programs:** email, webinars, events, content, SEO, AEO/GEO (AI answer engines), paid, partner, SDR plays and in-product signals. Each has an owner, funnel stage, motion (always-on, burst or both), who runs it (HQ, region or both), share of sourced pipeline and cost per MQL.
 8. **Launch moments:** launches, events and buying seasons by plan month. They drive the bursts.
 9. **Regional plans:** each regional lead picks their region and uploads their plan as a CSV or Excel file (one row per program with program, month, budget and MQL columns, in any order; month can be a plan month number, a month name or a date). A template and a [sample LATAM plan](samples/latam-plan.csv) are linked in the pane. Programs can then be edited in place, along with the status and what the region adapts locally. Plans can also be shared by copy and paste.
@@ -34,7 +36,7 @@ It's a static site with no build step.
 | Funnel by segment | Pipeline, SQOs, MQLs, leads and bookings for each segment |
 | Regional plans | A roll-up of each region's target, what HQ programs deliver, what the region owes, what it has committed, coverage and gap. A regional digest lists what to act on first, then each region's section has its own digest that checks the plan against the global plan: coverage, budget, cost per MQL, SDR capacity, launch timing and late-year pipeline. With an Anthropic API key (kept in the browser tab, never saved), each region can also get a Claude-written read |
 | Channel mix | Each program's share of pipeline, MQLs, SQOs, budget and pipeline-to-spend ratio |
-| Buying committee & ABM | The message and offer by role and stage, plus pipeline by ABM tier and per account |
+| Buying committee & ABM | Counts of live, in-production and missing assets, an offer matrix by role and stage that shows gaps, a to-do list by due month, and ABM accounts, pipeline, owner and next play by region. Pick a region to see what it can use and what it is waiting on |
 | Calendar | MQLs by program and month, with always-on programs flat and bursts on launch moments |
 | Owners | A RACI of workstreams by function. Click a cell to change it |
 | Paid brief | A copy-ready brief for the paid media team: target, markets, audiences, account lists, flighting, offers and KPIs |

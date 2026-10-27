@@ -3,8 +3,10 @@
 (function () {
   'use strict';
 
-  const STORE_KEY = 'demand-gen-hub:v3';
+  const STORE_KEY = 'demand-gen-hub:v4';
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const STAGES = ['Aware', 'Consider', 'Decide'], ASSET_STATUS = ['Live', 'In production', 'Missing'], LOC_STATUS = ['Not needed', 'Requested', 'In progress', 'Ready'];
+  let comRegion = 'All regions';
   const RISK_STATUS = ['On track', 'Watching', 'Triggered'];
   const FUNCTIONS = ['Demand gen', 'PMM', 'Field', 'Partner', 'Paid (shared svc)', 'Creative', 'RevOps', 'Sales / SDR'];
 
@@ -40,6 +42,26 @@
         { role: 'COO / Ops leader', part: 'Business sponsor', cares: 'Cross-team execution, speed, cost', aware: 'Benchmark: where work stalls', consider: 'ROI calculator + customer story', decide: 'Business case workshop' },
         { role: 'IT admin / architect', part: 'Technical evaluator', cares: 'SSO, permissions, integrations, rollout effort', aware: 'Integration guides, community', consider: 'Hands-on lab / sandbox', decide: 'Security review pack' },
         { role: 'Team lead (existing user)', part: 'Champion', cares: 'Getting their team unblocked', aware: 'In-product AI agent prompts', consider: 'Template gallery + office hours', decide: 'Internal pitch kit for their exec' }
+      ],
+      assets: [
+        { role: 'CIO / Head of IT', stage: 'Aware', asset: 'Analyst report on governed AI agents', status: 'Live', owner: 'PMM', due: 0, regions: 'EMEA, APJ', loc: 'Ready' },
+        { role: 'CIO / Head of IT', stage: 'Consider', asset: 'Security & admin deep-dive webinar', status: 'In production', owner: 'Demand gen', due: 2, regions: 'EMEA, APJ', loc: 'Requested' },
+        { role: 'CIO / Head of IT', stage: 'Decide', asset: 'Exec briefing + reference call', status: 'Live', owner: 'Sales / SDR', due: 0, regions: '', loc: 'Not needed' },
+        { role: 'COO / Ops leader', stage: 'Aware', asset: 'Benchmark: where work stalls', status: 'In production', owner: 'PMM', due: 2, regions: 'EMEA', loc: 'Requested' },
+        { role: 'COO / Ops leader', stage: 'Consider', asset: 'ROI calculator + customer story', status: 'Live', owner: 'PMM', due: 0, regions: 'EMEA, APJ, LATAM', loc: 'In progress' },
+        { role: 'COO / Ops leader', stage: 'Decide', asset: 'Business case workshop', status: 'Missing', owner: 'Field', due: 4, regions: '', loc: 'Not needed' },
+        { role: 'IT admin / architect', stage: 'Aware', asset: 'Integration guides, community', status: 'Live', owner: 'PMM', due: 0, regions: '', loc: 'Not needed' },
+        { role: 'IT admin / architect', stage: 'Consider', asset: 'Hands-on lab / sandbox', status: 'In production', owner: 'Demand gen', due: 2, regions: 'APJ', loc: 'Requested' },
+        { role: 'IT admin / architect', stage: 'Decide', asset: 'Security review pack', status: 'Live', owner: 'PMM', due: 0, regions: 'EMEA', loc: 'Ready' },
+        { role: 'Team lead (existing user)', stage: 'Aware', asset: 'In-product AI agent prompts', status: 'Live', owner: 'Demand gen', due: 0, regions: '', loc: 'Not needed' },
+        { role: 'Team lead (existing user)', stage: 'Consider', asset: 'Template gallery + office hours', status: 'Live', owner: 'Demand gen', due: 0, regions: '', loc: 'Not needed' },
+        { role: 'Team lead (existing user)', stage: 'Decide', asset: 'Internal pitch kit for their exec', status: 'Missing', owner: 'Creative', due: 3, regions: 'EMEA, APJ, LATAM', loc: 'Requested' }
+      ],
+      abmRegions: [
+        { region: 'North America', t1: 22, t2: 165, t3: 1375, owner: 'NA enterprise AE + SDR pod', next: 'Exec dinners for the 22 Tier 1 accounts in month 9; security deep-dive invites now' },
+        { region: 'EMEA', t1: 10, t2: 75, t3: 625, owner: 'EMEA field + SDR pod', next: 'Invite Tier 1 to the London and Munich summits; GDPR governance webinar for Tier 2' },
+        { region: 'APJ', t1: 6, t2: 45, t3: 375, owner: 'APJ partner team', next: 'Partner-hosted briefings in Sydney and Tokyo' },
+        { region: 'LATAM', t1: 2, t2: 15, t3: 125, owner: '', next: '' }
       ],
       tiers: [
         { tier: 'Tier 1 · 1:1', accounts: 40, share: 35, play: 'Custom content, exec dinners, AE + SDR named plays, direct mail' },
@@ -111,7 +133,7 @@
       segments: [{ name: 'Enterprise', share: 100, acv: 100000, mqlSqo: 20 }],
       regions: [{ name: 'Global', share: 100, lead: 'HQ' }],
       personas: [{ role: '', part: '', cares: '', aware: '', consider: '', decide: '' }],
-      tiers: [{ tier: 'Tier 1 · 1:1', accounts: 0, share: 100, play: '' }],
+      tiers: [{ tier: 'Tier 1 · 1:1', accounts: 0, share: 100, play: '' }], assets: [], abmRegions: [],
       products: [{ name: '', share: 100, launch: 0 }],
       moments: [], regionPlans: {}, risks: [], raci: {}
     });
@@ -284,9 +306,19 @@
       { key: 'name', label: 'Region', w: 110 }, { key: 'share', label: 'Share %', type: 'num', w: 60 }, { key: 'lead', label: 'Owned by', w: 130 }
     ], { noun: 'region', make: () => ({ name: '', share: 0, lead: '' }) });
     editor('ed-personas', S.personas, [
-      { key: 'role', label: 'Role', w: 130 }, { key: 'part', label: 'Part in the deal', w: 110 }, { key: 'cares', label: 'Cares about', type: 'area' },
-      { key: 'aware', label: 'Aware offer', type: 'area' }, { key: 'consider', label: 'Consider offer', type: 'area' }, { key: 'decide', label: 'Decide offer', type: 'area' }
-    ], { noun: 'role', make: () => ({ role: '', part: '', cares: '', aware: '', consider: '', decide: '' }) });
+      { key: 'role', label: 'Role', w: 130 }, { key: 'part', label: 'Part in the deal', w: 110 }, { key: 'cares', label: 'Cares about', type: 'area' }
+    ], { noun: 'role', make: () => ({ role: '', part: '', cares: '' }) });
+    const roles = S.personas.map((p) => p.role).filter(Boolean);
+    editor('ed-assets', S.assets, [
+      { key: 'role', label: 'Role', type: 'select', options: roles.length ? roles : [''] }, { key: 'stage', label: 'Stage', type: 'select', options: STAGES },
+      { key: 'asset', label: 'Asset or offer', type: 'area', w: 150 }, { key: 'status', label: 'Status', type: 'select', options: ASSET_STATUS },
+      { key: 'owner', label: 'Owner', type: 'select', options: FUNCTIONS }, { key: 'due', label: 'Due month', type: 'num', w: 46 },
+      { key: 'regions', label: 'Localize for', w: 110 }, { key: 'loc', label: 'Localization', type: 'select', options: LOC_STATUS }
+    ], { noun: 'asset', make: () => ({ role: roles[0] || '', stage: 'Aware', asset: '', status: 'Missing', owner: 'PMM', due: 0, regions: '', loc: 'Not needed' }) });
+    editor('ed-abm', S.abmRegions, [
+      { key: 'region', label: 'Region', w: 100 }, { key: 't1', label: 'Tier 1', type: 'num', w: 46 }, { key: 't2', label: 'Tier 2', type: 'num', w: 50 }, { key: 't3', label: 'Tier 3', type: 'num', w: 56 },
+      { key: 'owner', label: 'Account owner', w: 120 }, { key: 'next', label: 'Next play', type: 'area', w: 170 }
+    ], { noun: 'region', make: () => ({ region: '', t1: 0, t2: 0, t3: 0, owner: '', next: '' }) });
     editor('ed-tiers', S.tiers, [
       { key: 'tier', label: 'Tier', w: 100 }, { key: 'accounts', label: 'Accounts', type: 'num', w: 70 },
       { key: 'share', label: 'Pipeline %', type: 'num', w: 60 }, { key: 'play', label: 'Play', type: 'area', w: 180 }
@@ -685,10 +717,43 @@
         '</tbody><tfoot><tr><td>Total</td><td></td><td></td><td></td><td class="n">100%</td><td></td><td class="n">' + money(P.tot.pipe) + '</td><td class="n">' + fmtInt(P.tot.mql) + '</td><td class="n">' + fmtInt(P.tot.sqo) + '</td><td class="n">' + money(P.budget) + '</td><td class="n">' + (P.budget ? (P.tot.pipe / P.budget).toFixed(1) + 'x' : '–') + '</td></tr></tfoot></table></div>';
     },
     committee(P) {
-      const rows = S.personas.map((p) => '<tr><td><b>' + esc(p.role) + '</b><div class="note">' + esc(p.part) + '</div></td><td>' + esc(p.cares) + '</td><td>' + esc(p.aware) + '</td><td>' + esc(p.consider) + '</td><td>' + esc(p.decide) + '</td></tr>').join('');
+      const A = S.assets, cnt = (st) => A.filter((x) => x.status === st).length;
+      const locOpen = A.filter((x) => x.regions && (x.loc === 'Requested' || x.loc === 'In progress')).length;
+      const regs = S.regions.map((r) => r.name).filter(Boolean);
+      const forReg = (x) => comRegion === 'All regions' || regionList(x.regions).some((g) => g.toLowerCase() === comRegion.toLowerCase());
+      const cell = (role, stage) => {
+        const xs = A.filter((x) => x.role === role && x.stage === stage);
+        if (!xs.length) return '<td><div class="asset miss"><span class="pill burst">No asset</span><span class="note">Gap: add one under Offers &amp; assets</span></div></td>';
+        return '<td>' + xs.map((x) => {
+          const due = num(x.due) ? ' · due ' + (P.labels[Math.round(num(x.due)) - 1] || 'month ' + x.due) : '';
+          let loc = '';
+          if (comRegion !== 'All regions') loc = forReg(x) ? '<span class="note">' + esc(comRegion) + ': ' + esc(x.loc) + '</span>' : '<span class="note">' + esc(comRegion) + ': global English version</span>';
+          else if (x.regions) loc = '<span class="note">Localize for ' + esc(x.regions) + ': ' + esc(x.loc) + '</span>';
+          return '<div class="asset ' + (x.status === 'Missing' ? 'miss' : '') + '">' + assetPill(x.status) + '<b>' + esc(x.asset || 'Untitled') + '</b><span class="note">' + esc(x.owner) + due + '</span>' + loc + '</div>';
+        }).join('') + '</td>';
+      };
+      const rows = S.personas.map((p) => '<tr><td><b>' + esc(p.role) + '</b><div class="note">' + esc(p.part) + '</div><div class="note">' + esc(p.cares) + '</div></td>' + STAGES.map((st) => cell(p.role, st)).join('') + '</tr>').join('');
+      const todo = A.filter((x) => x.status !== 'Live' || (x.regions && x.loc !== 'Ready' && x.loc !== 'Not needed')).filter(forReg)
+        .sort((a, b) => (num(a.due) || 99) - (num(b.due) || 99))
+        .map((x) => '<tr><td>' + esc(x.asset) + '<div class="note">' + esc(x.role) + ' · ' + esc(x.stage) + '</div></td><td>' + assetPill(x.status) + '</td><td>' + esc(x.owner) + '</td><td>' + (num(x.due) ? (P.labels[Math.round(num(x.due)) - 1] || x.due) : '–') + '</td><td>' + (x.regions ? esc(x.regions) + ' · ' + esc(x.loc) : '–') + '</td></tr>').join('');
+      const totT = P.tiers.map((t) => Math.max(0, num(t.accounts)));
+      const abm = S.abmRegions.filter((g) => comRegion === 'All regions' || g.region === comRegion).map((g) => {
+        const accts = [num(g.t1), num(g.t2), num(g.t3)];
+        const pipe = accts.reduce((a, n, i) => a + (P.tiers[i] && totT[i] ? P.tiers[i].pipe * n / totT[i] : 0), 0);
+        const flag = !g.owner || !g.next;
+        return '<tr' + (flag ? ' class="flagrow"' : '') + '><td><b>' + esc(g.region) + '</b></td><td class="n">' + fmtInt(accts[0]) + '</td><td class="n">' + fmtInt(accts[1]) + '</td><td class="n">' + fmtInt(accts[2]) + '</td><td class="n">' + money(pipe) + '</td><td>' + (esc(g.owner) || '<span class="pill burst">No owner</span>') + '</td><td>' + (esc(g.next) || '<span class="pill burst">No next play</span>') + '</td></tr>';
+      }).join('');
+      const sums = [0, 1, 2].map((i) => S.abmRegions.reduce((a, g) => a + num(g['t' + (i + 1)]), 0));
+      const mism = P.tiers.slice(0, 3).map((t, i) => (sums[i] !== totT[i] ? esc(t.tier) + ': ' + fmtInt(sums[i]) + ' by region vs ' + fmtInt(totT[i]) + ' in the plan' : '')).filter(Boolean);
       const trs = P.tiers.map((t) => '<tr><td><b>' + esc(t.tier) + '</b></td><td class="n">' + fmtInt(num(t.accounts)) + '</td><td class="n">' + pct(t.w * 100) + '</td><td class="n">' + money(t.pipe) + '</td><td class="n">' + money(t.perAcct) + '</td><td>' + esc(t.play) + '</td></tr>').join('');
-      return '<div><h2>Buying committee &amp; ABM</h2><p class="lead">One buying committee with role-specific tracks. Each role gets the story it cares about, and every track points at the same account-level pipeline goal.</p></div>' +
-        '<div class="out"><table class="t" data-export><thead><tr><th>Role</th><th>Cares about</th><th>Aware</th><th>Consider</th><th>Decide</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      return '<div><h2>Buying committee &amp; ABM</h2><p class="lead">Every role in the deal needs an asset at every stage. This tracks which ones are live, which are missing, who owns them, and which regions need them localized. Pick a region to see what that region can use now and what it is waiting on.</p></div>' +
+        '<label class="f regpick">Show for<select id="committee-region">' + ['All regions'].concat(regs).map((r) => '<option' + (r === comRegion ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></label>' +
+        '<div class="tiles"><div class="tile"><span>Assets live</span><b>' + cnt('Live') + '</b><span>of ' + A.length + '</span></div><div class="tile"><span>In production</span><b>' + cnt('In production') + '</b><span>with a due month</span></div>' +
+        '<div class="tile' + (cnt('Missing') ? ' alert' : '') + '"><span>Missing</span><b>' + cnt('Missing') + '</b><span>gaps in the journey</span></div><div class="tile"><span>Localization open</span><b>' + locOpen + '</b><span>requested or in progress</span></div></div>' +
+        '<h3>Offers by role and stage</h3><div class="out"><table class="t matrix"><thead><tr><th>Role</th><th>Aware</th><th>Consider</th><th>Decide</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '<h3>To do' + (comRegion !== 'All regions' ? ' for ' + esc(comRegion) : '') + '</h3><div class="out"><table class="t" data-export><thead><tr><th>Asset</th><th>Status</th><th>Owner</th><th>Due</th><th>Localization</th></tr></thead><tbody>' + (todo || '<tr><td colspan="5" class="note">Nothing open.</td></tr>') + '</tbody></table></div>' +
+        '<h3>ABM by region</h3><div class="out"><table class="t"><thead><tr><th>Region</th><th class="n">Tier 1</th><th class="n">Tier 2</th><th class="n">Tier 3</th><th class="n">Pipeline</th><th>Account owner</th><th>Next play</th></tr></thead><tbody>' + abm + '</tbody></table></div>' +
+        (mism.length ? '<p class="note">Account counts by region don\'t match the tiers: ' + mism.join('; ') + '.</p>' : '') +
         '<h3>ABM tiers</h3><div class="out"><table class="t"><thead><tr><th>Tier</th><th class="n">Accounts</th><th class="n">Share</th><th class="n">Pipeline</th><th class="n">Per account</th><th>Play</th></tr></thead><tbody>' + trs + '</tbody></table></div>';
     },
     calendar(P) {
@@ -747,6 +812,9 @@
       lines.map(([k, f, v]) => '<dt>' + k + '</dt><dd>' + f + (v !== '' ? ' = <b>' + v + '</b>' : '') + '</dd>').join('') +
       '</dl>' + (foot ? '<p class="note">' + esc(foot) + '</p>' : '') + '</div></td></tr>';
   }
+  function assetPill(st) { return '<span class="pill ' + (st === 'Live' ? 'on' : st === 'In production' ? 'both' : 'burst') + '">' + esc(st) + '</span>'; }
+  const regionList = (t) => String(t || '').split(/[,;/]+/).map((x) => x.trim()).filter(Boolean);
+  function offers(role, stage) { return S.assets.filter((x) => x.role === role && x.stage === stage && x.status !== 'Missing').map((x) => x.asset).join(', '); }
   function riskPill(st) { return '<span class="pill ' + (st === 'Triggered' ? 'burst' : st === 'Watching' ? 'both' : 'on') + '">' + esc(st) + '</span>'; }
   function likePill(l) { return '<span class="pill ' + (l === 'High' ? 'burst' : l === 'Medium' ? 'both' : 'on') + '">' + esc(l || '–') + '</span>'; }
   function coverCell(c) { return Math.round(Math.min(c, 9.99) * 100) + '%'; }
@@ -766,6 +834,10 @@
     out.push([paid > 0.35 ? 'watch' : 'ok', 'Paid is ' + pct(paid * 100) + ' of the mix' + (paid > 0.35 ? ', so the plan leans on a team you don\'t run' : '')]);
     const r = P.budget ? P.tot.pipe / P.budget : 0;
     out.push([r === 0 ? 'watch' : r < 5 ? 'fix' : r < 10 ? 'watch' : 'ok', r ? 'Pipeline to spend ' + r.toFixed(1) + 'x' : 'Set cost per MQL to see pipeline to spend']);
+    const miss = S.assets.filter((x) => x.status === 'Missing').length;
+    if (miss) out.push(['watch', miss + ' buying committee asset' + (miss > 1 ? 's' : '') + ' missing']);
+    const noPlay = S.abmRegions.filter((g) => !g.owner || !g.next).length;
+    if (noPlay) out.push(['watch', noPlay + ' region' + (noPlay > 1 ? 's have' : ' has') + ' no ABM owner or next play']);
     const trig = S.risks.filter((x) => x.status === 'Triggered').length, watch = S.risks.filter((x) => x.status === 'Watching').length;
     if (trig) out.push(['fix', trig + ' risk' + (trig > 1 ? 's' : '') + ' triggered: run the contingency on the Risks tab']);
     if (watch) out.push(['watch', watch + ' risk' + (watch > 1 ? 's' : '') + ' with early warning signals moving']);
@@ -868,7 +940,7 @@
     S.moments.forEach((m) => lines.push('- Month ' + m.month + ' (' + (P.labels[Math.round(num(m.month)) - 1] || '?') + '): ' + m.name));
     lines.push('');
     lines.push('Offers to promote');
-    S.personas.forEach((p) => lines.push('- ' + p.role + ': ' + [p.aware, p.consider].filter(Boolean).join(' → ')));
+    S.personas.forEach((p) => lines.push('- ' + p.role + ': ' + [offers(p.role, 'Aware'), offers(p.role, 'Consider')].filter(Boolean).join(' → ')));
     lines.push('');
     lines.push('KPIs');
     lines.push('Primary: MQLs and sourced pipeline. Secondary: cost per MQL, Tier 1 account reach. Report weekly into the shared pipeline dashboard.');
@@ -897,6 +969,7 @@
     $('btn-csv').onclick = () => { const d = tableData(); if (!d) return toast('No table on this tab'); copyText(d.map((r) => r.map((c) => /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c).join(',')).join('\n'), 'CSV copied'); };
     $('btn-reset').onclick = () => { S = example(); save(); bindInputs(); $('example-pill').hidden = false; render(); toast('Example reloaded'); };
     $('btn-blank').onclick = () => { S = blank(); save(); bindInputs(); $('example-pill').hidden = true; render(); toast('Started a blank plan'); };
+    $('panel').addEventListener('change', (e) => { if (e.target.id === 'committee-region') { comRegion = e.target.value; render(); } });
     $('in-rp-file').onchange = (e) => uploadPlan(e.target.files[0]);
     $('btn-rp-template').onclick = () => {
       const a = document.createElement('a');

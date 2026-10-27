@@ -207,3 +207,10 @@ details.sub[open]{display:flex;flex-direction:column;gap:8px}
 .aidig{background:var(--sunk);border-radius:10px;padding:10px 12px;font-size:13px;display:flex;flex-direction:column;gap:4px}
 .hqd{background:var(--accent-soft);border-color:var(--hero-line)}
 .hqd p{margin:0}
+
+.matrix td{min-width:170px}
+.asset{display:flex;flex-direction:column;gap:3px;align-items:flex-start;padding:6px 0}
+.asset+.asset{border-top:1px dashed var(--line)}
+.asset.miss b{color:var(--over)}
+.regpick{max-width:260px}
+tr.flagrow td{background:var(--over-soft)}
