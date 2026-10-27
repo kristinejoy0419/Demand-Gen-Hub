@@ -835,10 +835,29 @@
       const sums = [0, 1, 2].map((i) => S.abmRegions.reduce((a, g) => a + num(g['t' + (i + 1)]), 0));
       const mism = P.tiers.slice(0, 3).map((t, i) => (sums[i] !== totT[i] ? esc(t.tier) + ': ' + fmtInt(sums[i]) + ' by region vs ' + fmtInt(totT[i]) + ' in the plan' : '')).filter(Boolean);
       const trs = P.tiers.map((t) => '<tr><td><b>' + esc(t.tier) + '</b></td><td class="n">' + fmtInt(num(t.accounts)) + '</td><td class="n">' + pct(t.w * 100) + '</td><td class="n">' + money(t.pipe) + '</td><td class="n">' + money(t.perAcct) + '</td><td>' + esc(t.play) + '</td></tr>').join('');
+      // the top card follows the region picker: what this region can use now, what it waits on, and its ABM book
+      const regionCard = () => {
+        const all = comRegion === 'All regions';
+        const mine = (x) => regionList(x.regions).some((g) => g.toLowerCase() === comRegion.toLowerCase());
+        const usable = A.filter((x) => x.status === 'Live' && (all || !mine(x) || x.loc === 'Ready' || x.loc === 'Not needed')).length;
+        const waitLoc = A.filter((x) => x.status === 'Live' && !all && mine(x) && x.loc !== 'Ready' && x.loc !== 'Not needed').length;
+        const locN = all ? locOpen : A.filter((x) => mine(x) && (x.loc === 'Requested' || x.loc === 'In progress')).length;
+        const g = all ? null : S.abmRegions.find((x) => x.region === comRegion);
+        const acc = all ? sums : g ? [num(g.t1), num(g.t2), num(g.t3)] : [0, 0, 0];
+        const pipe = acc.reduce((a, n, i) => a + (P.tiers[i] && totT[i] ? P.tiers[i].pipe * n / totT[i] : 0), 0);
+        const roles = S.personas.length, gapList = S.personas.filter((p) => !A.some((x) => x.role === p.role && x.status === 'Live' && (all || !mine(x) || x.loc === 'Ready' || x.loc === 'Not needed'))), gapRoles = gapList.length;
+        return '<div class="box regcard"><div class="regcard-head"><label class="f regpick">Show for<select id="committee-region">' + ['All regions'].concat(regs).map((r) => '<option' + (r === comRegion ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></label>' +
+          '<p class="note">' + (all ? 'Totals across every region. Pick a region to see what it can use now and what it is waiting on.' : 'What ' + esc(comRegion) + ' can put in front of buyers today, what it is waiting on, and its account book' + (g && g.owner ? ', owned by ' + esc(g.owner) : '') + '.') + '</p></div>' +
+          '<div class="tiles">' +
+          '<div class="tile"><span>' + (all ? 'Assets live' : 'Ready in ' + esc(comRegion)) + '</span><b>' + usable + '</b><span>of ' + A.length + (waitLoc ? ' · ' + waitLoc + ' live but not localized yet' : '') + '</span></div>' +
+          '<div class="tile' + (gapRoles ? ' alert' : '') + '"><span>Roles with nothing ready</span><b>' + gapRoles + '</b><span>' + (gapRoles ? gapList.map((p) => esc(p.role)).join(', ') : 'of ' + roles + ' in the committee') + '</span></div>' +
+          '<div class="tile' + (cnt('Missing') ? ' alert' : '') + '"><span>Missing or in production</span><b>' + (cnt('Missing') + cnt('In production')) + '</b><span>' + cnt('Missing') + ' missing · ' + cnt('In production') + ' in production (global)</span></div>' +
+          '<div class="tile"><span>Localization open</span><b>' + locN + '</b><span>' + (all ? 'requested or in progress' : 'for ' + esc(comRegion)) + '</span></div>' +
+          '<div class="tile"><span>ABM accounts</span><b>' + fmtInt(acc[0] + acc[1] + acc[2]) + '</b><span>' + fmtInt(acc[0]) + ' / ' + fmtInt(acc[1]) + ' / ' + fmtInt(acc[2]) + ' by tier · ' + money(pipe) + ' pipeline</span></div>' +
+          '</div>' + (!all && g && g.next ? '<p class="note"><b>Next play:</b> ' + esc(g.next) + '</p>' : !all ? '<p class="note"><span class="pill burst">No next play</span> Add one under ABM by region.</p>' : '') + '</div>';
+      };
       return '<div><h2>Buying committee &amp; ABM</h2><p class="lead">Every role in the deal needs an asset at every stage. This tracks which ones are live, which are missing, who owns them, and which regions need them localized. Pick a region to see what that region can use now and what it is waiting on.</p></div>' +
-        '<label class="f regpick">Show for<select id="committee-region">' + ['All regions'].concat(regs).map((r) => '<option' + (r === comRegion ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></label>' +
-        '<div class="tiles"><div class="tile"><span>Assets live</span><b>' + cnt('Live') + '</b><span>of ' + A.length + '</span></div><div class="tile"><span>In production</span><b>' + cnt('In production') + '</b><span>with a due month</span></div>' +
-        '<div class="tile' + (cnt('Missing') ? ' alert' : '') + '"><span>Missing</span><b>' + cnt('Missing') + '</b><span>gaps in the journey</span></div><div class="tile"><span>Localization open</span><b>' + locOpen + '</b><span>requested or in progress</span></div></div>' +
+        regionCard() +
         '<h3>Offers by role and stage</h3><div class="out"><table class="t matrix"><thead><tr><th>Role</th><th>Aware</th><th>Consider</th><th>Decide</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
         '<h3>To do' + (comRegion !== 'All regions' ? ' for ' + esc(comRegion) : '') + '</h3><div class="out"><table class="t" data-export><thead><tr><th>Asset</th><th>Status</th><th>Owner</th><th>Due</th><th>Localization</th></tr></thead><tbody>' + (todo || '<tr><td colspan="5" class="note">Nothing open.</td></tr>') + '</tbody></table></div>' +
         '<h3>ABM by region</h3><div class="out"><table class="t"><thead><tr><th>Region</th><th class="n">Tier 1</th><th class="n">Tier 2</th><th class="n">Tier 3</th><th class="n">Pipeline</th><th>Account owner</th><th>Next play</th></tr></thead><tbody>' + abm + '</tbody></table></div>' +
