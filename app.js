@@ -161,6 +161,21 @@
       raci: {}
     };
   }
+  // sample data built on Asana's public AI Teammates launch. Illustrative only: every number is made up.
+  const ASANA_LABEL = 'Sample data loaded: Asana AI Teammates example. Illustrative only, built from public product info. All numbers are made up.';
+  function asanaExample() {
+    let t = JSON.stringify(example());
+    [['Governed AI for IT', 'AI Teammates launch'], ['AI agent suite for IT', 'AI Teammates'], ['Admin & governance add-on', 'AI Studio'],
+      ['AI agents IT can say yes to', 'AI Teammates that work alongside your team'], ['Control without slowing teams down', 'Build no-code AI workflows without waiting on IT'],
+      ['Analyst report on governed AI agents', 'AI Teammates buyer\'s guide'], ['Security review pack', 'AI Studio workflow templates']
+    ].forEach(([a, b]) => { t = t.split(a).join(b); });
+    const e = JSON.parse(t);
+    return Object.assign(e, {
+      sample: 'asana', name: 'FY27 Asana AI Teammates launch', fy: 'FY27', product: 'Asana AI Teammates, AI Studio, core work management',
+      brief: 'Sample data, illustrative only. Built from Asana\'s public product announcements. All numbers are made up and are not Asana data. Launch AI Teammates, the prebuilt AI agents that work alongside people in Asana, to enterprise buyers. Grow sourced pipeline with marketing, operations and IT leaders, using AI Studio and the core work management platform as the always-on base.'
+    });
+  }
+  function showPill() { const p = $('example-pill'); p.hidden = !S.isExample; p.textContent = S.sample === 'asana' ? ASANA_LABEL : 'Example loaded: illustrative AI work platform, IT launch year'; }
   function blank() {
     const e = example();
     return Object.assign(e, {
@@ -944,7 +959,7 @@
 
   function changed(rebind) {
     if (S.isExample) { S.isExample = false; }
-    $('example-pill').hidden = !S.isExample;
+    showPill();
     save();
     if (rebind) bindInputs();
     render();
@@ -1955,7 +1970,8 @@
     let reopen = [];
     window.addEventListener('beforeprint', () => { reopen = Array.from($('panel').querySelectorAll('details:not([open])')); reopen.forEach((d) => { d.open = true; }); });
     window.addEventListener('afterprint', () => { reopen.forEach((d) => { d.open = false; }); reopen = []; });
-    $('btn-reset').onclick = () => { S = example(); save(); bindInputs(); $('example-pill').hidden = false; render(); toast('Example reloaded'); };
+    $('btn-reset').onclick = () => { S = example(); save(); bindInputs(); showPill(); render(); toast('Example reloaded'); };
+    $('btn-sample-asana').onclick = () => { S = fill(asanaExample()); save(); bindInputs(); showPill(); render(); toast('Asana AI Teammates sample loaded'); };
     $('btn-blank').onclick = () => { S = blank(); save(); bindInputs(); $('brief-box').open = true; $('example-pill').hidden = true; render(); toast('Started a blank plan'); };
     $('panel').addEventListener('change', (e) => { if (e.target.id === 'committee-region') { comRegion = e.target.value; render(); } });
     $('in-rp-file').onchange = (e) => uploadPlan(e.target.files[0]);
@@ -2063,6 +2079,6 @@
 
   /* ---------- boot ---------- */
   try { const t = localStorage.getItem(STORE_KEY + ':tab'); if (t && TABS.some((x) => x[0] === t)) tab = t; } catch (e) { /* ignore */ }
-  $('example-pill').hidden = !S.isExample;
+  showPill();
   bindInputs(); renderTabs(); wire(); render();
 })();
