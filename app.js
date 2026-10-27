@@ -1444,6 +1444,8 @@
   // how fast a program's spend can come out mid-year, and how much of it
   const CUT_SPEED = { paid: 'Fast', content: 'Fast', webinar: 'Medium', partner: 'Medium', seo: 'Medium', aeo: 'Medium', email: 'Medium', product: 'Medium', events: 'Slow', sdr: 'Slow' };
   const CUT_FLEX = { Fast: 1, Medium: 0.6, Slow: 0.3 }, CUT_CAP = { Fast: 0.6, Medium: 0.4, Slow: 0.2 }, CUT_RETURN = 0.75;
+  // low-cost always-on programs compound and cutting them saves almost nothing, so they stay off the cut list
+  const CUT_KEEP = ['seo', 'email', 'product'];
   function extend(P) {
     const ppm = P.tot.mql ? P.tot.pipe / P.tot.mql : 0, spm = P.tot.mql ? P.tot.sqo / P.tot.mql : 0;
     P.ppm = ppm; P.spm = spm;
@@ -1467,7 +1469,8 @@
     // cuts weigh efficiency against how fast the money can come out, and protect what carries a Tier 1 launch.
     // The last dollars in a program earn the least, so a cut loses 75% of the average return, not all of it.
     const t1 = P.camps.filter((c) => c.tier === 'Tier 1 launch' && c.status !== 'Done');
-    P.cutOrder = byEff.map(({ c, eff }) => {
+    P.cutKept = byEff.filter((x) => CUT_KEEP.includes(x.c.id)).map((x) => x.c.name);
+    P.cutOrder = byEff.filter((x) => !CUT_KEEP.includes(x.c.id)).map(({ c, eff }) => {
       const sp = CUT_SPEED[c.id] || (c.motion === 'Burst' ? 'Slow' : 'Medium'), camp = t1.find((x) => x.chans.some((y) => y.id === c.id));
       const cap = camp ? 0.25 : CUT_CAP[sp], score = eff / CUT_FLEX[sp];
       return { c, eff, speed: sp, protect: camp ? camp.name : '', cap, score, lost: c.cost * cap * eff * CUT_RETURN };
@@ -1852,7 +1855,7 @@
         '<h3>What I need from leadership</h3><div class="out"><table class="t" data-export><thead><tr><th>Ask or decision</th><th>From</th><th>By</th><th>Why it matters</th></tr></thead><tbody>' + asks + '</tbody></table></div>' +
         '<h3>Budget scenarios</h3><div class="out"><table class="t"><thead><tr><th>Scenario</th><th class="n">Budget</th><th class="n">Pipeline</th><th class="n">Change</th><th class="n">MQLs</th><th class="n">Pipe : spend</th><th>What changes</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
         '<p class="note">Cuts follow the cut order below. Added budget goes to the most efficient programs first, up to half again each one\'s budget, at half their average return, since the next dollar works less hard than the first.</p>' +
-        '<h3>Cut order</h3><p class="note">Ranked by efficiency and by how fast the money can come out: paid can stop this week, events are contracted months ahead, SDR spend is headcount. Programs carrying a Tier 1 launch are protected and cut last, at most 25%. A cut loses about 75% of the program\'s average return, since the last dollars in work the least.</p>' +
+        '<h3>Cut order</h3><p class="note">Ranked by efficiency and by how fast the money can come out: paid can stop this week, events are contracted months ahead, SDR spend is headcount. Programs carrying a Tier 1 launch are protected and cut last, at most 25%. A cut loses about 75% of the program\'s average return, since the last dollars in work the least.' + (P.cutKept.length ? ' ' + esc(P.cutKept.length > 1 ? P.cutKept.slice(0, -1).join(', ') + ' and ' + P.cutKept.slice(-1) : P.cutKept[0]) + ' stay off the list: they cost little and compound, so cutting them saves almost nothing.' : '') + '</p>' +
         '<div class="out"><table class="t"><thead><tr><th>#</th><th>Program</th><th class="n">Budget</th><th class="n">Pipe : spend</th><th>How fast it comes out</th><th class="n">Can cut this year</th><th class="n">Pipeline lost</th></tr></thead><tbody>' + cut + '</tbody></table></div>' +
         '<p class="note">Pipe : spend counts sourced pipeline only. Programs that create demand, like events and paid, also influence deals other programs get credit for, so test with a holdout before cutting one deeply.</p>';
     }
