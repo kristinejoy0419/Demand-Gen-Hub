@@ -372,3 +372,6 @@ details.more[open]>summary{margin-bottom:8px}
 .whybox > b + .mk + .note{margin-bottom:12px}
 .guide-min{align-self:flex-start;font-size:13px}
 .guide ol li .linkbtn,.guide .note .linkbtn{font-weight:600}
+.tabhead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:0 8px;border-bottom:1px solid var(--line)}
+.tabhead>.tabs{border-bottom:none;flex:1 1 420px;min-width:0;padding-bottom:10px}
+.tabhead>.toolbar{padding:8px 16px 10px;margin-left:auto}
