@@ -28,7 +28,7 @@
       start: '2027-02',
       r1: 22, r3: 25, cycle: 120,
       sdrs: 5, sdrCap: 100,
-      salesTarget: 35000000, coverage: 3, mktShare: 50,
+      salesTarget: 35000000, coverage: 3, mktShare: 47,
       lyPipe: 38000000, lyMql: 3450, lySqo: 560, lyBudget: 3100000,
       expShare: 35, expConv: 30, pqlPerMonth: 60, influenced: 120000000,
       campaigns: [
@@ -38,8 +38,8 @@
         { name: 'Year-end consolidation', tier: 'Seasonal', product: 'Core work platform', theme: 'Consolidate tools before next year\'s budget locks', offer: 'Business case workshop', audience: 'COO / Ops leader, CIO / Head of IT', start: 9, launch: 11, end: 12, share: 10, programs: 'events, sdr, partner, email', owner: 'Field', status: 'Planning' }
       ],
       actuals: [
-        { month: 1, mql: 228, sqo: 39, pipe: 2800000, spend: 165000 },
-        { month: 2, mql: 462, sqo: 74, pipe: 5400000, spend: 540000 }
+        { month: 1, mql: 250, sqo: 45, pipe: 3400000, spend: 180000 },
+        { month: 2, mql: 505, sqo: 92, pipe: 6000000, spend: 520000 }
       ],
       team: [
         { fn: 'Demand gen', hc: 6, cap: 8, sla: 'Campaign brief to every team 12 weeks before launch', intake: 'Campaign brief + weekly campaign stand-up', escal: 'Head of Campaigns' },
@@ -122,12 +122,12 @@
         { month: 11, name: 'Year-end budget season', type: 'Season' }
       ],
       regionPlans: {
-        'North America': { status: 'Submitted', adapt: 'AWS marketplace offers, US public sector proof points', programs: [
+        'North America': { status: 'Approved', review: { st: 'Approved', note: 'Approved with the gap; HQ points a paid burst at NA in Q2', date: '' }, adapt: 'AWS marketplace offers, US public sector proof points', programs: [
           { name: 'IT leader roadshow (5 cities)', type: 'Field event', camp: 'Governed AI for IT', audience: 'CIO / Head of IT', accounts: '22 Tier 1 + 60 Tier 2', offer: 'Analyst report on governed AI agents', month: 3, owner: 'NA field marketing', budget: 420000, mql: 210, status: 'Confirmed', notes: 'Boston, NYC, Chicago, Austin, SF; AE-hosted tables' },
           { name: 'AWS partner co-marketing', type: 'Partner', camp: 'Admin & governance add-on', audience: 'IT admin / architect', accounts: 'Tier 2 + 3 on AWS', offer: 'Security & admin deep-dive webinar', month: 6, owner: 'NA partner marketing', budget: 150000, mql: 90, status: 'Planned', notes: 'Marketplace private offers; 50/50 MDF' },
           { name: 'Tier 1 exec dinners', type: 'ABM play', camp: 'Governed AI for IT', audience: 'CIO / Head of IT', accounts: '22 Tier 1', offer: 'Exec briefing + reference call', month: 9, owner: 'NA enterprise AE + SDR pod', budget: 180000, mql: 40, status: 'Planned', notes: 'Counts as influence for accounts already in pipeline' }
         ] },
-        EMEA: { status: 'Draft', adapt: 'Data residency proof points, local partner logos, DE/FR language versions', programs: [
+        EMEA: { status: 'Submitted', adapt: 'Data residency proof points, local partner logos, DE/FR language versions', programs: [
           { name: 'London + Munich IT summits', type: 'Field event', camp: 'Governed AI for IT', audience: 'CIO / Head of IT', accounts: '10 Tier 1 + 40 Tier 2', offer: 'Analyst report on governed AI agents', month: 4, owner: 'EMEA field marketing', budget: 260000, mql: 110, status: 'Confirmed', notes: 'Sponsor + speaking slot; SDR follow-up within 48 hours' },
           { name: 'GDPR-ready AI governance webinar (DE/FR)', type: 'Webinar', camp: 'Admin & governance add-on', audience: 'IT admin / architect', accounts: 'Tier 2 + 3', offer: 'Security & admin deep-dive webinar', month: 6, owner: 'EMEA demand gen', budget: 40000, mql: 70, status: 'Planned', notes: 'Localized from the global series' }
         ] },
@@ -145,7 +145,7 @@
           signal: 'Weekly MQL → SQO rate by segment', trigger: 'Commercial below 13% for 3 weeks in a row',
           contingency: 'Raise the MQL score threshold with RevOps, route low-fit MQLs to nurture, and move 10% of Commercial paid budget to in-product PQL plays.',
           mitigation: 'Agree scoring and SLA with RevOps before the year starts; review at day 30' },
-        { risk: 'AI answers cut organic clicks', likelihood: 'Medium', impact: 1000000, status: 'Watching', owner: 'Content + web',
+        { risk: 'AI answers cut organic clicks', likelihood: 'Medium', impact: 1000000, status: 'On track', owner: 'Content + web',
           signal: 'Non-brand organic sessions vs AI citation rate on tracked prompts', trigger: 'Organic sessions down 15% quarter on quarter with no lift in AI-referred traffic',
           contingency: 'Move half of the SEO content budget to AEO answer pages and comparison content, and add AI-referred MQLs to the weekly readout.',
           mitigation: 'Structure priority pages as direct answers; track citations monthly' },
@@ -586,7 +586,12 @@
     const ai = r.plan.ai ? '<div class="aidig"><b>Claude\'s read</b><div>' + esc(r.plan.ai).replace(/\n/g, '<br>') + '</div></div>' : '';
     const btn = aiKey && (r.plan.programs || []).length ? '<button class="btn" type="button" data-ai="' + esc(r.name) + '">' + (r.plan.ai ? 'Refresh Claude\'s read' : 'Ask Claude for a read') + '</button>' : '';
     return '<div class="digest"><div class="dhead"><b>Digest</b>' + (r.plan.file ? '<span class="note">from ' + esc(r.plan.file) + (r.plan.uploaded ? ' · ' + esc(r.plan.uploaded) : '') + '</span>' : '') + '</div>' +
-      '<p class="note">' + d.head + '</p><div class="health">' + d.items.map(([k, t]) => '<span class="hp ' + k + '">' + lab[k] + '</span><span>' + t + '</span>').join('') + '</div>' + ai + btn + '</div>';
+      '<p class="note">' + d.head + '</p>' + (() => {
+        const row = ([k, t]) => '<span class="hp ' + k + '">' + lab[k] + '</span><span>' + t + '</span>';
+        const top = d.items.filter((x) => x[0] === 'fix'), rest = d.items.filter((x) => x[0] !== 'fix');
+        const lead = top.length ? top : d.items.slice(0, 1), more = top.length ? rest : rest.slice(1);
+        return '<div class="health">' + lead.map(row).join('') + '</div>' + (more.length ? '<details class="more"><summary>' + more.length + ' more to watch</summary><div class="health">' + more.map(row).join('') + '</div></details>' : '');
+      })() + ai + btn + '</div>';
   }
   // one regional program: what it is, who it's for, what it uses, when, who runs it and what it should deliver
   function progItem(x, P) {
@@ -610,7 +615,7 @@
   // HQ sign-off on a region's plan
   function reviewBox(r) {
     const st = r.status, rv = r.plan.review, n = esc(r.name), gap = r.gap > 0.5 ? ' with a ' + fmtInt(r.gap) + ' MQL gap' : '';
-    const last = rv && rv.note ? '<p class="note">' + (rv.st === 'Changes requested' ? 'Sent back' : rv.st === 'Approved' ? 'Approved' : 'Note') + (rv.date ? ' ' + esc(rv.date) : '') + ': ' + esc(rv.note) + '</p>' : rv && rv.st === 'Approved' ? '<p class="note">Approved ' + esc(rv.date || '') + '</p>' : '';
+    const last = rv && rv.note ? '<p class="note">' + (rv.st === 'Changes requested' ? 'Sent back' : 'HQ note') + (rv.date ? ' ' + esc(rv.date) : '') + ': ' + esc(rv.note) + '</p>' : rv && rv.st === 'Approved' ? '<p class="note">Approved ' + esc(rv.date || '') + '</p>' : '';
     if (st === 'Approved') return '<div class="review ok">' + last + '<button class="btn" type="button" data-rv="reopen" data-region="' + n + '">Reopen</button></div>';
     if (st === 'Not started') return '<div class="review">' + last + '<p class="note">Nothing to review until ' + n + ' uploads a plan.</p></div>';
     return '<div class="review">' + last + '<label class="f">Note to ' + n + ' (optional)<input type="text" class="rv-note" placeholder="' + (gap ? 'e.g. close the gap with a second roadshow leg' : 'e.g. looks good') + '"></label>' +
@@ -681,17 +686,20 @@
   }
 
   /* ---------- tabs ---------- */
+  // the hub answers four questions; everything else sits under More
   const TAB_GROUPS = [
-    ['Overview', [['onepage', 'Plan on a page'], ['summary', 'Summary'], ['checks', 'Check the math']]],
-    ['HQ strategy', [['campaigns', 'Campaigns'], ['quarters', 'Quarterly plan'], ['funnel', 'Funnel & motion'], ['channels', 'Channel mix'], ['calendar', 'Calendar']]],
-    ['Regions', [['regions', 'Regional plans'], ['committee', 'Buying committee & ABM']]],
-    ['Execution', [['pacing', 'Pacing'], ['owners', 'Team & owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['scenarios', 'Scenarios & asks'], ['risks', 'Risks']]]
+    ['Overview', [['onepage', 'Plan on a page']], 'The number, the gap to what sales needs, the budget, and what needs attention'],
+    ['HQ strategy', [['campaigns', 'Campaigns'], ['funnel', 'Funnel & targets'], ['channels', 'Channel mix'], ['quarters', 'Quarterly plan']], 'What is the number, how do we get there, and what are we running?'],
+    ['Regions', [['regions', 'Regional plans'], ['committee', 'Buying committee & ABM']], 'Are the regions bought in, and what are they running?'],
+    ['Execution', [['pacing', 'Pacing'], ['risks', 'Risks'], ['scenarios', 'Scenarios & asks']], 'Are we on track, and what do we do if we are not?'],
+    ['More', [['summary', 'Funnel summary'], ['calendar', 'Calendar'], ['owners', 'Team & owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['checks', 'Check the math']], 'Supporting detail: calendar, team, the paid brief, measurement, and a math check']
   ];
   const TABS = TAB_GROUPS.flatMap((g) => g[1]);
   function renderTabs() {
     const cur = TAB_GROUPS.find((g) => g[1].some((t) => t[0] === tab)) || TAB_GROUPS[0];
     $('tabs').innerHTML = '<div class="sections" aria-label="Sections">' + TAB_GROUPS.map(([g, ts]) => '<button class="sec" type="button" data-group="' + esc(g) + '" aria-pressed="' + (g === cur[0]) + '">' + esc(g) + '</button>').join('') + '</div>' +
-      '<div class="subtabs" role="tablist">' + cur[1].map(([k, l]) => '<button class="tab" role="tab" type="button" data-tab="' + k + '" aria-selected="' + (k === tab) + '">' + l + '</button>').join('') + '</div>';
+      (cur[1].length > 1 ? '<div class="subtabs" role="tablist">' + cur[1].map(([k, l]) => '<button class="tab" role="tab" type="button" data-tab="' + k + '" aria-selected="' + (k === tab) + '">' + l + '</button>').join('') + '</div>' : '') +
+      '<p class="secq">' + esc(cur[2] || '') + '</p>';
     const on = $('tabs').querySelector('.tab[aria-selected=true]'), row = on && on.parentElement;
     if (row) row.scrollLeft = Math.max(0, on.offsetLeft - row.offsetLeft - 24);
     $('tabs').onclick = (e) => {
@@ -732,6 +740,14 @@
     const cards = (FEEDS[tab] || []).map((k) => { const c = document.querySelector('.rail [data-card="' + k + '"] h3'); return c ? '<button type="button" class="feed" data-open-card="' + k + '">' + esc(c.textContent) + '</button>' : ''; }).join('');
     const wk = UPD[tab] ? '<span class="feedsep">Weekly update</span><span class="feed wk">' + UPD_LABEL[UPD[tab]] + ' · below</span>' : '';
     return '<div class="feeds"><span class="feedlab">Built from</span>' + cards + wk + '</div>';
+  }
+  // reading by default: the planning assumptions stay out of the way until someone wants to edit
+  let editing = false;
+  try { editing = localStorage.getItem(STORE_KEY + ':editing') === '1'; } catch (e) { /* ignore */ }
+  function setEditing(on) {
+    editing = on; document.body.classList.toggle('reading', !on);
+    try { localStorage.setItem(STORE_KEY + ':editing', on ? '1' : '0'); } catch (e) { /* ignore */ }
+    const b = $('btn-edit'); if (b) { b.textContent = on ? 'Done editing' : 'Edit assumptions'; b.setAttribute('aria-pressed', String(on)); }
   }
   function render() {
     const P = extend(compute());
@@ -801,7 +817,7 @@
       const own = P.channels.filter((c) => c.runBy === 'Region').map((c) => esc(c.name)).join(', ') || 'None';
       const sections = P.regions.map((r) => {
         const progs = (r.plan.programs || []).filter((x) => x.name || num(x.mql));
-        const list = progs.length ? '<div class="progs">' + progs.slice().sort((a, b) => num(a.month) - num(b.month)).map((x) => progItem(x, P)).join('') + '</div>' : '<p class="note">No regional programs yet.</p>';
+        const list = progs.length ? '<details class="more"><summary>See the ' + progs.length + ' program' + (progs.length === 1 ? '' : 's') + '</summary><div class="progs">' + progs.slice().sort((a, b) => num(a.month) - num(b.month)).map((x) => progItem(x, P)).join('') + '</div></details>' : '<p class="note">No regional programs yet.</p>';
         const types = {}; progs.forEach((x) => { const t = x.type || 'Other'; types[t] = (types[t] || 0) + 1; });
         const camps = Array.from(new Set(progs.map((x) => x.camp).filter((c) => c && c !== LOCAL)));
         const auds = Array.from(new Set(progs.map((x) => x.audience).filter(Boolean)));
@@ -1273,13 +1289,20 @@
     },
     onepage(P) {
       const t = P.tot, B = P.base, pc = P.pace, [pk, pl] = paceStatus(pc.pace);
+      let guideOff = false; try { guideOff = localStorage.getItem(STORE_KEY + ':guide') === 'off'; } catch (e) { /* ignore */ }
+      const guide = guideOff ? '' : '<div class="guide"><div class="ghead"><b>Read this in 2 minutes</b><button type="button" class="linkbtn" id="guide-x">Hide</button></div><ol>' +
+        '<li><b>This page.</b> The number, how it covers what sales needs, the budget, and what needs attention.</li>' +
+        '<li><button type="button" class="linkbtn" data-go="campaigns">HQ strategy → Campaigns</button>. The four campaigns that carry the number. Click any month on a timeline to see what lands and why it is flagged.</li>' +
+        '<li><button type="button" class="linkbtn" data-go="regions">Regions → Regional plans</button>. What each region is actually running, how much of its share it covers, and HQ sign-off.</li>' +
+        '<li><button type="button" class="linkbtn" data-go="pacing">Execution → Pacing</button> and <button type="button" class="linkbtn" data-go="risks">Risks</button>. Plan vs actual, and the early warnings with the contingency we run when one trips.</li>' +
+        '</ol><p class="note">The example is illustrative. Two things are flagged on purpose: SDR capacity in launch months, and regions that haven\'t covered their share yet.</p></div>';
       const camps = P.camps.map((c) => '<tr><td><b>' + esc(c.name) + '</b><div class="note">' + esc(c.offer) + '</div></td><td>' + esc(c.tier) + '</td><td>' + (P.labels[Math.round(num(c.launch)) - 1] || '–') + '</td><td class="n">' + money(c.pipe) + '</td><td class="n">' + money(c.cost) + '</td></tr>').join('');
       const q = P.quarters.map((x) => '<td class="n">' + money(x.pipe) + '</td>').join('');
       const hl = health(P).filter((h) => h[0] !== 'ok').slice(0, 5).map(([k, s]) => hp(k, k === 'fix' ? 'Fix' : 'Watch') + '<span>' + esc(s) + '</span>').join('');
       const asks = S.asks.slice(0, 4).map((a) => '<li><b>' + esc(a.ask) + '</b> <span class="note">· ' + esc(a.who) + (num(a.by) ? ' · by ' + (P.labels[Math.round(num(a.by)) - 1] || '') : '') + '</span></li>').join('');
       const risks = P.risks.filter((r) => r.status !== 'On track').map((r) => '<li>' + riskPill(r.status) + ' ' + esc(r.risk) + '</li>').join('');
       const s80 = P.scen[0], s120 = P.scen[2];
-      return '<div class="op-head"><div><h2>' + esc(S.name || 'Untitled plan') + '</h2><p class="lead">' + esc(S.fy) + ' plan on a page' + (S.product ? ' · ' + esc(S.product) : '') + '</p></div><button class="btn" type="button" id="btn-print">Print or save as PDF</button></div>' +
+      return '<div class="op-head"><div><h2>' + esc(S.name || 'Untitled plan') + '</h2><p class="lead">' + esc(S.fy) + ' plan on a page' + (S.product ? ' · ' + esc(S.product) : '') + '</p></div></div>' + guide +
         '<div class="tiles">' +
         '<div class="tile hero"><span>Sourced pipeline</span><b>' + money(t.pipe) + '</b><span>' + (vsLy(t.pipe, B.ly.pipe) || 'set last year to compare') + '</span></div>' +
         '<div class="tile' + (B.covGap > 0.5 ? ' alert' : '') + '"><span>Covers sales need</span><b>' + (B.mktNeed ? coverCell(t.pipe / B.mktNeed) : '–') + '</b><span>' + (B.mktNeed ? 'of ' + money(B.mktNeed) + ' marketing owes' : 'set the sales target') + '</span></div>' +
@@ -1410,7 +1433,7 @@
     const noPlay = S.abmRegions.filter((g) => !g.owner || !g.next).length;
     if (noPlay) out.push(['watch', noPlay + ' region' + (noPlay > 1 ? 's have' : ' has') + ' no ABM owner or next play']);
     const LR = (P.risks || extend(P).risks), trig = LR.filter((x) => x.status === 'Triggered').length, watch = LR.filter((x) => x.status === 'Watching').length;
-    if (trig) out.push(['fix', trig + ' risk' + (trig > 1 ? 's' : '') + ' triggered: run the contingency on the Risks tab']);
+    if (trig) out.push(['fix', (trig > 1 ? trig + ' risks triggered' : 'Risk triggered: ' + LR.find((x) => x.status === 'Triggered').risk.replace(/^./, (c) => c.toLowerCase())) + '. Run the contingency on the Risks tab']);
     if (watch) out.push(['watch', watch + ' risk' + (watch > 1 ? 's' : '') + ' with early warning signals moving']);
     const E = P.pace ? P : extend(P);
     if (E.pace.asOf) { const [k, l] = paceStatus(E.pace.pace); out.push([k, l + ': pipeline is at ' + coverCell(E.pace.pace) + ' of plan through ' + P.labels[E.pace.asOf - 1] + ', forecast ' + money(E.pace.forecast)]); }
@@ -1660,6 +1683,7 @@
     $('panel').addEventListener('click', (e) => {
       const b = e.target.closest('[data-open-card]'); if (!b) return;
       const card = document.querySelector('.rail [data-card="' + b.dataset.openCard + '"]'); if (!card) return;
+      if (!editing) setEditing(true);
       if (getComputedStyle($('btn-open-rail')).display !== 'none') $('btn-open-rail').click();
       card.open = true; card.scrollIntoView({ behavior: 'smooth', block: 'start' });
       card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
@@ -1667,6 +1691,10 @@
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-print') window.print(); });
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-brief') copyText($('brief-text').innerText, 'Brief copied'); });
     const rail = $('rail'), scrim = $('scrim');
+    setEditing(editing);
+    $('btn-edit').onclick = () => { setEditing(!editing); if (editing && getComputedStyle($('btn-open-rail')).display !== 'none') $('btn-open-rail').click(); };
+    document.addEventListener('click', (e) => { const g = e.target.closest('[data-go]'); if (!g) return; e.preventDefault(); tab = g.dataset.go; renderTabs(); render(); $('tabs').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    document.addEventListener('click', (e) => { if (e.target.id === 'guide-x') { try { localStorage.setItem(STORE_KEY + ':guide', 'off'); } catch (x) { /* ignore */ } render(); } });
     const setRail = (open) => { rail.classList.toggle('open', open); scrim.classList.toggle('open', open); $('btn-open-rail').setAttribute('aria-expanded', String(open)); };
     $('btn-open-rail').onclick = () => setRail(true);
     $('btn-close-rail').onclick = scrim.onclick = () => setRail(false);
