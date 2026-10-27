@@ -583,8 +583,8 @@
   }
   function digestBox(r, P) {
     const d = digest(r, P), lab = { fix: 'Fix', watch: 'Watch', ok: 'OK' };
-    const ai = r.plan.ai ? '<div class="aidig"><b>Claude\'s read</b><div>' + esc(r.plan.ai).replace(/\n/g, '<br>') + '</div></div>' : '';
-    const btn = aiKey && (r.plan.programs || []).length ? '<button class="btn" type="button" data-ai="' + esc(r.name) + '">' + (r.plan.ai ? 'Refresh Claude\'s read' : 'Ask Claude for a read') + '</button>' : '';
+    const ai = r.plan.ai ? '<div class="aidig"><b>' + esc(r.plan.aiBy || 'Claude') + '\'s read</b><div>' + esc(r.plan.ai).replace(/\n/g, '<br>') + '</div></div>' : '';
+    const btn = aiKey && (r.plan.programs || []).length ? '<button class="btn" type="button" data-ai="' + esc(r.name) + '">' + (r.plan.ai ? 'Refresh ' + aiName() + '\'s read' : 'Ask ' + aiName() + ' for a read') + '</button>' : '';
     return '<div class="digest"><div class="dhead"><b>Digest</b>' + (r.plan.file ? '<span class="note">from ' + esc(r.plan.file) + (r.plan.uploaded ? ' · ' + esc(r.plan.uploaded) : '') + '</span>' : '') + '</div>' +
       '<p class="note">' + d.head + '</p>' + (() => {
         const row = ([k, t]) => '<span class="hp ' + k + '">' + lab[k] + '</span><span>' + t + '</span>';
@@ -633,6 +633,53 @@
       (fixes.length ? '<b>Act on first</b><ul>' + fixes.slice(0, 4).map((f) => '<li>' + f + '</li>').join('') + '</ul>' : '<p class="note">Nothing to fix.</p>') + '</div>';
   }
   let aiKey = '';
+  // one call for either provider: a free Gemini key (AIza...) or an Anthropic key (sk-ant-...)
+  const aiName = () => (/^sk-ant-/.test(aiKey) ? 'Claude' : aiKey ? 'Gemini' : 'the AI');
+  // Gemini's responseSchema is an OpenAPI subset: upper-case types, no additionalProperties
+  function geminiSchema(x) {
+    if (Array.isArray(x)) return x.map(geminiSchema);
+    if (!x || typeof x !== 'object') return x;
+    const o = {};
+    Object.keys(x).forEach((k) => {
+      if (k === 'additionalProperties') return;
+      if (k === 'type') o.type = String(x.type).toUpperCase();
+      else if (k === 'properties') o.properties = Object.fromEntries(Object.entries(x.properties).map(([n, v]) => [n, geminiSchema(v)]));
+      else o[k] = geminiSchema(x[k]);
+    });
+    return o;
+  }
+  async function callAI({ system, text, pdf, schema, maxTokens }) {
+    if (/^sk-ant-/.test(aiKey)) {
+      const content = (pdf ? [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdf } }] : []).concat([{ type: 'text', text }]);
+      const body = { model: 'claude-opus-5-5', max_tokens: maxTokens, fallbacks: 'default', output_config: { effort: 'medium' }, system, messages: [{ role: 'user', content }] };
+      if (schema) body.output_config.format = { type: 'json_schema', schema };
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': aiKey, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify(body)
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error((j.error && j.error.message) || 'Request failed');
+      if (j.stop_reason === 'refusal') throw new Error('Claude declined this request');
+      if (j.stop_reason === 'max_tokens') throw new Error('the answer was too long to finish in one pass');
+      return (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+    }
+    const parts = (pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf } }] : []).concat([{ text }]);
+    const generationConfig = { maxOutputTokens: maxTokens * 2 }; // Gemini counts its thinking against this cap
+    if (schema) { generationConfig.responseMimeType = 'application/json'; generationConfig.responseSchema = geminiSchema(schema); }
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + encodeURIComponent(aiKey), {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts }], generationConfig })
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error((j.error && j.error.message) || 'Request failed');
+    if (j.promptFeedback && j.promptFeedback.blockReason) throw new Error('Gemini blocked this request (' + j.promptFeedback.blockReason + ')');
+    const c = (j.candidates || [])[0];
+    if (!c) throw new Error('Gemini returned no answer');
+    if (c.finishReason === 'MAX_TOKENS') throw new Error('the answer was too long to finish in one pass');
+    return ((c.content && c.content.parts) || []).map((x) => x.text || '').join('').trim();
+  }
+  const GEMINI_MODEL = 'gemini-3.8-flash';
   async function askClaude(name) {
     const P = compute(), r = P.regions.find((x) => x.name === name); if (!r || !aiKey) return;
     const d = digest(r, P);
@@ -641,19 +688,13 @@
       region: { name: r.name, share: +(r.w * 100).toFixed(1), mqlTarget: Math.round(r.mql), fromHqPrograms: Math.round(r.fromHq), owesFromOwnPrograms: Math.round(r.owes), committed: Math.round(r.committed), budget: Math.round(r.spend), adaptingLocally: r.plan.adapt, programs: r.plan.programs },
       ruleChecks: d.items.map((i) => i[0] + ': ' + i[1].replace(/<[^>]+>/g, ''))
     };
-    toast('Asking Claude about ' + name + '…');
+    toast('Asking ' + aiName() + ' about ' + name + '…');
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-key': aiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 700, messages: [{ role: 'user', content:
-          'You are a VP of demand generation reviewing a regional marketing plan against the global plan. In 5 short bullets (plain text, start each with "- "), say what is strong, what is at risk, and the specific actions the regional lead should take before the plan is approved. Be concrete with numbers and months. No preamble.\n\n' + JSON.stringify(ctx) }] })
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error((j.error && j.error.message) || 'Request failed');
-      regionPlan(name).ai = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n').trim();
-      changed(false); toast('Claude\'s read added to ' + name);
-    } catch (e) { toast('Claude request failed: ' + e.message); }
+      regionPlan(name).ai = await callAI({ maxTokens: 4000, system: 'You are a VP of demand generation reviewing a regional marketing plan against the global plan.',
+        text: 'In 5 short bullets (plain text, start each with "- "), say what is strong, what is at risk, and the specific actions the regional lead should take before the plan is approved. Be concrete with numbers and months. No preamble.\n\n' + JSON.stringify(ctx) });
+      regionPlan(name).aiBy = aiName();
+      changed(false); toast(aiName() + '\'s read added to ' + name);
+    } catch (e) { toast(aiName() + ' request failed: ' + e.message); }
   }
 
   function planBlock(name) {
@@ -700,14 +741,14 @@
     const su = S.setup || {}, qs = (su.missing || []).filter((m) => !m.done);
     const head = '<div class="wz-head"><b>' + done + ' of ' + st.length + ' ready</b><div class="wz-bar"><i style="width:' + (done / st.length * 100).toFixed(1) + '%"></i></div></div>';
     const nextBox = next ? '<div class="wz-next"><span class="wz-k">Next</span><b>' + esc(next.label) + '</b><span>Needs ' + esc(next.gap) + '.</span>' +
-      qs.filter((m) => m.step === next.id).slice(0, 2).map((m) => '<span class="note">Claude asks: ' + esc(m.question) + '</span>').join('') +
+      qs.filter((m) => m.step === next.id).slice(0, 2).map((m) => '<span class="note">' + esc(su.by || 'Claude') + ' asks: ' + esc(m.question) + '</span>').join('') +
       '<button type="button" class="btn primary" data-open-card="' + next.card + '">Open ' + esc(next.label) + '</button></div>' : '<div class="wz-next ok"><b>Every section has what it needs.</b></div>';
     if (compact) return head + nextBox;
     const list = '<ol class="wz-list">' + st.map((s) => '<li class="' + (s.gap ? '' : 'ok') + '"><button type="button" class="linkbtn" data-open-card="' + s.card + '">' + esc(s.label) + '</button>' + (s.gap ? '<span>' + esc(s.gap) + '</span>' : '') + '</li>').join('') + '</ol>';
-    const ask = qs.length ? '<div class="wz-qs"><b>Claude\'s questions</b><p class="hint">Answer what you can. Claude updates the plan from your answers.</p>' +
+    const ask = qs.length ? '<div class="wz-qs"><b>' + esc(su.by || 'Claude') + '\'s questions</b><p class="hint">Answer what you can. The plan updates from your answers.</p>' +
       qs.map((m) => '<label class="f">' + esc(m.question) + '<input type="text" data-wz-q="' + (su.missing.indexOf(m)) + '" value="' + esc(m.answer || '') + '"></label>').join('') +
-      '<div class="btns"><button type="button" class="btn primary" id="btn-wz-send"' + (aiKey ? '' : ' disabled') + '>Send answers to Claude</button></div></div>' : '';
-    const assumed = (su.assumed || []).length ? '<details class="sub"><summary>What Claude assumed (' + su.assumed.length + ')</summary><ul class="wz-as">' + su.assumed.map((a) => '<li>' + esc(a) + '</li>').join('') + '</ul></details>' : '';
+      '<div class="btns"><button type="button" class="btn primary" id="btn-wz-send"' + (aiKey ? '' : ' disabled') + '>Send answers to ' + esc(aiName()) + '</button></div></div>' : '';
+    const assumed = (su.assumed || []).length ? '<details class="sub"><summary>What ' + esc(su.by || 'Claude') + ' assumed (' + su.assumed.length + ')</summary><ul class="wz-as">' + su.assumed.map((a) => '<li>' + esc(a) + '</li>').join('') + '</ul></details>' : '';
     const from = su.file ? '<p class="hint">Filled from <b>' + esc(su.file) + '</b>' + (su.at ? ' on ' + esc(su.at) : '') + (su.summary ? '. ' + esc(su.summary) : '') + '</p>' : '';
     return head + from + nextBox + ask + assumed + list;
   }
@@ -716,7 +757,6 @@
     if (w.contains(document.activeElement) && document.activeElement.dataset.wzQ != null) return; // don't wipe an answer mid-typing
     w.innerHTML = wizardHtml(false);
     const b = $('btn-fill-brief'); if (b) b.disabled = !aiKey || busy;
-    const h = $('brief-key-hint'); if (h) h.hidden = !!aiKey;
   }
 
   // the brief as Claude reads it: a PDF goes in as a document, everything else as text
@@ -737,7 +777,7 @@
         briefDoc = { name, text };
       } else briefDoc = { name, text: await f.text() };
       $('brief-file-name').textContent = name + ' is ready.';
-      toast(aiKey ? 'Brief loaded. Fill the plan when ready' : 'Brief loaded. Add your API key to let Claude fill the plan');
+      toast(aiKey ? 'Brief loaded. Fill the plan when ready' : 'Brief loaded. Add a Gemini or Anthropic key to fill the plan');
     } catch (e) { briefDoc = null; toast('Could not read ' + name + ': ' + e.message); }
   }
 
@@ -782,31 +822,20 @@
     });
   }
   async function runAgent(answers) {
-    if (!aiKey) return toast('Add your Anthropic API key first');
+    if (!aiKey) return toast('Add a Gemini or Anthropic key first');
     const pasted = ($('in-brief-paste').value || '').trim();
     if (!answers && !briefDoc && !pasted) return toast('Upload or paste your GTM brief first');
-    const content = [];
-    if (!answers && briefDoc && briefDoc.pdf) content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: briefDoc.pdf } });
+    const pdf = !answers && briefDoc && briefDoc.pdf ? briefDoc.pdf : null;
     let ask = '';
     if (answers) ask = 'The planner answered your questions. Update the plan from these answers and list what is still missing.\n\n' + answers.map((m) => 'Q: ' + m.question + '\nA: ' + m.answer).join('\n\n');
-    else ask = 'Here is the GTM brief' + (briefDoc && briefDoc.pdf ? ' (attached above).' : ':\n\n<brief>\n' + (pasted || briefDoc.text) + '\n</brief>') + '\n\nFill the plan from it.';
-    content.push({ type: 'text', text: 'Current plan:\n' + JSON.stringify(planForAgent()) + '\n\n' + ask });
-    busy = true; renderWizard(); setAgentStatus('Claude is reading ' + (answers ? 'your answers' : 'the brief') + '…');
+    else ask = 'Here is the GTM brief' + (pdf ? ' (attached).' : ':\n\n<brief>\n' + (pasted || briefDoc.text) + '\n</brief>') + '\n\nFill the plan from it.';
+    busy = true; renderWizard(); setAgentStatus(aiName() + ' is reading ' + (answers ? 'your answers' : 'the brief') + '…');
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-key': aiKey, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-opus-5-5', max_tokens: 16000, fallbacks: 'default', output_config: { effort: 'medium', format: { type: 'json_schema', schema: briefSchema() } }, system: AGENT_SYSTEM, messages: [{ role: 'user', content }] })
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error((j.error && j.error.message) || 'Request failed');
-      if (j.stop_reason === 'refusal') throw new Error('Claude declined to read this brief');
-      if (j.stop_reason === 'max_tokens') throw new Error('the brief was too long to finish in one pass');
-      const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
-      applyBrief(JSON.parse(text), answers);
+      const text = await callAI({ system: AGENT_SYSTEM, pdf, schema: briefSchema(), maxTokens: 16000, text: 'Current plan:\n' + JSON.stringify(planForAgent()) + '\n\n' + ask });
+      applyBrief(JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, '')), answers);
       setAgentStatus('');
       toast(answers ? 'Plan updated from your answers' : 'Plan filled from the brief');
-    } catch (e) { setAgentStatus('Claude could not finish: ' + e.message); }
+    } catch (e) { setAgentStatus(aiName() + ' could not finish: ' + e.message); }
     busy = false; renderWizard();
   }
   function setAgentStatus(t) { const el = $('brief-status'); if (el) { el.textContent = t; el.hidden = !t; } }
@@ -834,6 +863,7 @@
     (d.channels || []).forEach((x) => { const c = S.channels.find((y) => y.id === x.id); if (!c) return; c.on = !!x.on; if (num(x.share) > 0 || !x.on) c.share = x.on ? num(x.share) : 0; if (num(x.cpm) > 0) c.cpm = num(x.cpm); });
     const answered = answers ? (keep.missing || []).map((q) => (q.answer ? Object.assign({}, q, { done: true }) : q)).filter((q) => q.done) : [];
     S.setup = {
+      by: aiName(),
       file: answers ? keep.file : (briefDoc ? briefDoc.name : 'pasted brief'), at: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       summary: t(d.summary), assumed: (answers ? (keep.assumed || []) : []).concat((d.assumed || []).map(t).filter(Boolean)).slice(-12),
       missing: answered.concat((d.missing || []).filter((q) => q && t(q.question)).map((q) => ({ step: q.step, question: t(q.question), answer: '' })))
