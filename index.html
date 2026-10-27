@@ -23,8 +23,9 @@
   <div class="grid">
     <aside class="rail" id="rail" aria-label="Plan inputs">
       <div class="rail-head"><h3>Plan inputs</h3><button class="btn" type="button" id="btn-close-rail">Done</button></div>
+      <div class="rail-group">Strategy</div>
       <details class="card" open>
-        <summary><h3>1 · Campaign &amp; brief</h3><small>what we're launching</small></summary>
+        <summary><h3>Campaign &amp; brief</h3><small>what we're launching</small></summary>
         <div class="body">
           <div class="row">
             <label class="f">Campaign name<input id="in-name"></label>
@@ -36,12 +37,18 @@
       </details>
 
       <details class="card">
+        <summary><h3>Campaigns</h3><small>theme · offer · launch · milestones</small></summary>
+        <div class="body"><div id="ed-campaigns"></div><p class="hint">Months are plan months (1 = plan start). Programs: list channels by name or id, such as webinar, paid, events. Milestones are worked back from the launch month.</p></div>
+      </details>
+
+      <details class="card">
         <summary><h3>Product mix</h3><small>share of pipeline by product</small></summary>
         <div class="body"><div id="ed-products"></div><p class="hint">Launch month is the plan month a new product goes live. Use 0 for products already in market.</p></div>
       </details>
 
+      <div class="rail-group">Targets</div>
       <details class="card" open>
-        <summary><h3>2 · Pipeline goal &amp; funnel</h3><small>work back from the number</small></summary>
+        <summary><h3>Pipeline goal &amp; funnel</h3><small>work back from the number</small></summary>
         <div class="body">
           <div class="row">
             <label class="f">Marketing-sourced pipeline target ($)<input id="in-goal" type="number" min="0" step="100000"></label>
@@ -60,18 +67,43 @@
         </div>
       </details>
 
-      <details class="card" open>
-        <summary><h3>3 · Segments</h3><small>share · deal size · conversion</small></summary>
+      <details class="card">
+        <summary><h3>Targets &amp; baseline</h3><small>sales need · last year · motion</small></summary>
+        <div class="body">
+          <div class="row">
+            <label class="f">Sales bookings target ($)<input id="in-sales" type="number" min="0" step="100000"></label>
+            <label class="f">Pipeline coverage needed (x)<input id="in-cov" type="number" min="0" step="0.5"></label>
+            <label class="f">Marketing-sourced share %<input id="in-mkt" type="number" min="0" max="100" step="5"></label>
+          </div>
+          <div class="row">
+            <label class="f">Last year sourced pipeline ($)<input id="in-lypipe" type="number" min="0" step="100000"></label>
+            <label class="f">Last year MQLs<input id="in-lymql" type="number" min="0"></label>
+            <label class="f">Last year SQOs<input id="in-lysqo" type="number" min="0"></label>
+            <label class="f">Last year program budget ($)<input id="in-lybudget" type="number" min="0" step="10000"></label>
+          </div>
+          <div class="row">
+            <label class="f">Expansion share of pipeline %<input id="in-exp" type="number" min="0" max="100" step="5"></label>
+            <label class="f">PQL → SQO %<input id="in-expconv" type="number" min="0" max="100" step="1"></label>
+            <label class="f">PQLs a month from product<input id="in-pql" type="number" min="0"></label>
+            <label class="f">Influenced pipeline target ($)<input id="in-infl" type="number" min="0" step="1000000"></label>
+          </div>
+          <p class="hint">Last year's actuals check the plan's assumptions. Expansion pipeline is fed by product-qualified leads (PQLs) from existing workspaces.</p>
+        </div>
+      </details>
+
+      <details class="card">
+        <summary><h3>Segments</h3><small>share · deal size · conversion</small></summary>
         <div class="body"><div id="ed-segments"></div></div>
       </details>
 
       <details class="card">
-        <summary><h3>4 · Regions</h3><small>share of the global number</small></summary>
+        <summary><h3>Regions</h3><small>share of the global number</small></summary>
         <div class="body"><div id="ed-regions"></div><p class="hint">Shares are rebalanced to 100% in the plan.</p></div>
       </details>
 
+      <div class="rail-group">Audience</div>
       <details class="card">
-        <summary><h3>5 · Buying committee</h3><small>role · what they care about</small></summary>
+        <summary><h3>Buying committee</h3><small>role · what they care about</small></summary>
         <div class="body"><div id="ed-personas"></div></div>
       </details>
 
@@ -81,7 +113,7 @@
       </details>
 
       <details class="card">
-        <summary><h3>6 · ABM tiers</h3><small>accounts · play</small></summary>
+        <summary><h3>ABM tiers</h3><small>accounts · play</small></summary>
         <div class="body"><div id="ed-tiers"></div></div>
       </details>
 
@@ -90,18 +122,20 @@
         <div class="body"><div id="ed-abm"></div><p class="hint">Each region's share of the tier accounts, who owns them, and the next play.</p></div>
       </details>
 
-      <details class="card" open>
-        <summary><h3>7 · Channels &amp; programs</h3><small>owner · motion · share</small></summary>
+      <div class="rail-group">Programs</div>
+      <details class="card">
+        <summary><h3>Channels &amp; programs</h3><small>owner · motion · share</small></summary>
         <div class="body"><div id="ed-channels"></div><p class="hint">Share is each program's slice of sourced pipeline. Enabled programs are rebalanced to 100%. Cost per MQL drives the program budget.</p></div>
       </details>
 
       <details class="card">
-        <summary><h3>8 · Launch moments</h3><small>drive the bursts</small></summary>
+        <summary><h3>Launch moments</h3><small>drive the bursts</small></summary>
         <div class="body"><div id="ed-moments"></div><p class="hint">Month 1 is the plan start. Launches lift that month and the next; events and buying seasons lift their own month.</p></div>
       </details>
 
+      <div class="rail-group">Regions</div>
       <details class="card" open>
-        <summary><h3>9 · Regional plans</h3><small>each regional lead fills in theirs</small></summary>
+        <summary><h3>Regional plans</h3><small>each regional lead fills in theirs</small></summary>
         <div class="body">
           <div class="row">
             <label class="f">Region<select id="in-rp-region"></select></label>
@@ -127,9 +161,25 @@
         </div>
       </details>
 
+      <div class="rail-group">Run it</div>
       <details class="card">
-        <summary><h3>10 · Risks &amp; contingencies</h3><small>signal · trigger · plan</small></summary>
+        <summary><h3>Risks &amp; contingencies</h3><small>signal · trigger · plan</small></summary>
         <div class="body"><div id="ed-risks"></div></div>
+      </details>
+
+      <details class="card">
+        <summary><h3>Actuals</h3><small>monthly, for pacing</small></summary>
+        <div class="body"><div id="ed-actuals"></div><p class="hint">Enter each closed month from the CRM. Pacing compares them to plan and forecasts the year.</p></div>
+      </details>
+
+      <details class="card">
+        <summary><h3>Team &amp; SLAs</h3><small>capacity · SLA · escalation</small></summary>
+        <div class="body"><div id="ed-team"></div><p class="hint">"Can run at once" is how many programs, unfinished assets and campaigns the team can carry together.</p></div>
+      </details>
+
+      <details class="card">
+        <summary><h3>Asks of leadership</h3><small>decisions needed to deliver</small></summary>
+        <div class="body"><div id="ed-asks"></div></div>
       </details>
 
       <div class="btns">
