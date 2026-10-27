@@ -411,6 +411,11 @@ details.card>summary h3{margin-right:auto}
 details.brief-box{border:1px dashed var(--line);border-radius:10px;padding:10px 12px}
 details.brief-box>summary{margin-bottom:0;color:var(--ink,inherit)}
 details.brief-box[open]>summary{margin-bottom:8px}
-.tlwhy{display:block;flex-basis:100%;margin-top:4px}
+.tlwhy{flex-basis:100%;margin-top:2px}
+.tlwhy>summary{cursor:pointer;display:inline}
+.tlwhy p{margin:4px 0 0}
 .rail details.card>summary{flex-wrap:wrap;align-items:center;row-gap:2px}
 .rail details.card>summary small{flex-basis:100%;text-align:left}
+.msed input,.msed select{width:100%;min-width:90px;font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:transparent;color:inherit}
+.msed td:first-child input{min-width:150px}
+.msed select{min-width:150px}
