@@ -666,12 +666,19 @@
     });
     return o;
   }
+  // give up after two minutes rather than leave the planner staring at a spinner
+  async function post(url, opts) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 120000);
+    try { return await fetch(url, Object.assign({ signal: ctl.signal }, opts)); }
+    catch (e) { throw new Error(e.name === 'AbortError' ? 'no answer after 2 minutes. Try again, or paste a shorter brief' : 'could not reach the AI service (' + e.message + ')'); }
+    finally { clearTimeout(t); }
+  }
   async function callAI({ system, text, pdf, schema, maxTokens }) {
     if (/^sk-ant-/.test(aiKey)) {
       const content = (pdf ? [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdf } }] : []).concat([{ type: 'text', text }]);
       const body = { model: 'claude-opus-5-5', max_tokens: maxTokens, fallbacks: 'default', output_config: { effort: 'medium' }, system, messages: [{ role: 'user', content }] };
       if (schema) body.output_config.format = { type: 'json_schema', schema };
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await post('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-api-key': aiKey, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01', 'anthropic-dangerous-direct-browser-access': 'true' },
         body: JSON.stringify(body)
@@ -683,10 +690,11 @@
       return (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
     }
     const parts = (pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf } }] : []).concat([{ text }]);
-    const generationConfig = { maxOutputTokens: maxTokens * 2 }; // Gemini counts its thinking against this cap
+    // low thinking keeps Gemini fast (its default, high, can take minutes); thinking counts against the output cap
+    const generationConfig = { maxOutputTokens: maxTokens * 2, thinkingConfig: { thinkingLevel: 'low' } };
     if (schema) { generationConfig.responseMimeType = 'application/json'; generationConfig.responseSchema = geminiSchema(schema); }
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + encodeURIComponent(aiKey), {
-      method: 'POST', headers: { 'content-type': 'application/json' },
+    const res = await post('https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': aiKey },
       body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts }], generationConfig })
     });
     const j = await res.json();
@@ -695,7 +703,7 @@
     const c = (j.candidates || [])[0];
     if (!c) throw new Error('Gemini returned no answer');
     if (c.finishReason === 'MAX_TOKENS') throw new Error('the answer was too long to finish in one pass');
-    return ((c.content && c.content.parts) || []).map((x) => x.text || '').join('').trim();
+    return ((c.content && c.content.parts) || []).filter((x) => !x.thought).map((x) => x.text || '').join('').trim();
   }
   const GEMINI_MODEL = 'gemini-3.8-flash';
   async function askClaude(name) {
@@ -847,15 +855,18 @@
     let ask = '';
     if (answers) ask = 'The planner answered your questions. Update the plan from these answers and list what is still missing.\n\n' + answers.map((m) => 'Q: ' + m.question + '\nA: ' + m.answer).join('\n\n');
     else ask = 'Here is the GTM brief' + (pdf ? ' (attached).' : ':\n\n<brief>\n' + (pasted || briefDoc.text) + '\n</brief>') + '\n\nFill the plan from it.';
-    busy = true; renderWizard(); setAgentStatus(aiName() + ' is reading ' + (answers ? 'your answers' : 'the brief') + '…');
+    busy = true; renderWizard();
+    const t0 = Date.now(), label = aiName() + ' is reading ' + (answers ? 'your answers' : 'the brief');
+    setAgentStatus(label + '…');
+    const tick = setInterval(() => setAgentStatus(label + '… ' + Math.round((Date.now() - t0) / 1000) + 's (usually under a minute)'), 1000);
     try {
       const text = await callAI({ system: AGENT_SYSTEM, pdf, schema: briefSchema(), maxTokens: 16000, text: 'Current plan:\n' + JSON.stringify(planForAgent()) + '\n\n' + ask });
       applyBrief(JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, '')), answers);
-      setAgentStatus('');
+      clearInterval(tick); setAgentStatus('');
       toast(answers ? 'Plan updated from your answers' : 'Plan filled from the brief');
       startWalk();
-    } catch (e) { setAgentStatus(aiName() + ' could not finish: ' + e.message); }
-    busy = false; renderWizard();
+    } catch (e) { clearInterval(tick); setAgentStatus(aiName() + ' could not finish: ' + e.message); }
+    clearInterval(tick); busy = false; renderWizard();
   }
   function setAgentStatus(t) { const el = $('brief-status'); if (el) { el.textContent = t; el.hidden = !t; } }
 
