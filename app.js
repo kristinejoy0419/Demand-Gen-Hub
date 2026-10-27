@@ -628,9 +628,22 @@
   ];
   const TABS = TAB_GROUPS.flatMap((g) => g[1]);
   function renderTabs() {
-    $('tabs').innerHTML = TAB_GROUPS.map(([g, ts]) => '<span class="tgroup">' + esc(g) + '</span>' + ts.map(([k, l]) => '<button class="tab" role="tab" type="button" data-tab="' + k + '" aria-selected="' + (k === tab) + '">' + l + '</button>').join('')).join('');
-    $('tabs').onclick = (e) => { const k = e.target.dataset.tab; if (k) { tab = k; try { localStorage.setItem(STORE_KEY + ':tab', k); } catch (x) { /* ignore */ } renderTabs(); render(); } };
+    const cur = TAB_GROUPS.find((g) => g[1].some((t) => t[0] === tab)) || TAB_GROUPS[0];
+    $('tabs').innerHTML = '<div class="sections" aria-label="Sections">' + TAB_GROUPS.map(([g, ts]) => '<button class="sec" type="button" data-group="' + esc(g) + '" aria-pressed="' + (g === cur[0]) + '">' + esc(g) + '</button>').join('') + '</div>' +
+      '<div class="subtabs" role="tablist">' + cur[1].map(([k, l]) => '<button class="tab" role="tab" type="button" data-tab="' + k + '" aria-selected="' + (k === tab) + '">' + l + '</button>').join('') + '</div>';
+    const on = $('tabs').querySelector('.tab[aria-selected=true]'), row = on && on.parentElement;
+    if (row) row.scrollLeft = Math.max(0, on.offsetLeft - row.offsetLeft - 24);
+    $('tabs').onclick = (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      let k = b.dataset.tab;
+      if (b.dataset.group) { const g = TAB_GROUPS.find((x) => x[0] === b.dataset.group); k = (lastIn[g[0]] && g[1].some((t) => t[0] === lastIn[g[0]])) ? lastIn[g[0]] : g[1][0][0]; }
+      if (!k) return;
+      tab = k; const g = TAB_GROUPS.find((x) => x[1].some((t) => t[0] === k)); if (g) lastIn[g[0]] = k;
+      try { localStorage.setItem(STORE_KEY + ':tab', k); } catch (x) { /* ignore */ }
+      renderTabs(); render();
+    };
   }
+  const lastIn = {};
 
   function render() {
     const P = extend(compute());
