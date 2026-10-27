@@ -749,13 +749,39 @@
     try { localStorage.setItem(STORE_KEY + ':editing', on ? '1' : '0'); } catch (e) { /* ignore */ }
     const b = $('btn-edit'); if (b) { b.textContent = on ? 'Done editing' : 'Edit assumptions'; b.setAttribute('aria-pressed', String(on)); }
   }
+  const go = (k, l) => '<button type="button" class="linkbtn" data-go="' + k + '">' + l + '</button>';
+  const GUIDES = {
+    onepage: ['Start with the hero number and whether it covers what sales needs.', 'The campaigns table shows which of the four campaigns carry the number and when each launches. Open ' + go('campaigns', 'Campaigns') + ' for the full plan behind each one.', 'Anything flagged under "Needs attention" links to the tab that explains it.'],
+    campaigns: ['Each card is one campaign: its theme, hero offer, audience, and the share of pipeline it owns.', 'Open a campaign to see the programs that carry it and the milestones worked back from launch.', 'Click any month on a timeline to see what lands that month and why it is flagged.'],
+    funnel: ['Each segment works the number backwards: pipeline, then SQOs, MQLs and leads.', 'Tap Enterprise or Commercial to see the campaigns and program buys that make up its number, and how the math is built.'],
+    channels: ['Every program a campaign runs on, with its MQLs, cost per MQL, budget and pipeline.', 'Check who runs each one (HQ, shared or region) and who owns it.'],
+    quarters: ['What each quarter delivers and costs, as finance reads it.', 'Tap a quarter to see its biggest programs and how the math is built.'],
+    regions: ['Each region owns a slice of the number. HQ campaigns cover part of it, and the region\'s own programs cover the rest.', 'Check the coverage column first, then open a region to see what it is running and approve or send back its plan.'],
+    committee: ['Every campaign has to reach every role in the buying committee.', 'Pick a region to see which assets it can use now and which still need localizing.'],
+    pacing: ['Plan vs actual by month, with a run-rate forecast for the year.', '"What to do" says what it would take to close any gap. Monthly actuals go in the weekly update.'],
+    risks: ['Each risk has an early warning signal, a trigger, and the contingency we run if it trips.', 'Risks tied to plan numbers set their own status. Start with anything marked Triggered or Watch.'],
+    scenarios: ['What happens to pipeline and each campaign if budget moves 20% either way, and what gets cut first.', 'The asks are the decisions leadership needs to make for the campaigns to deliver.'],
+    summary: ['The whole plan as one reverse funnel, from the pipeline target down to leads.', 'MQLs by month shows always-on programs running flat and campaign bursts stacking on launches.'],
+    calendar: ['MQLs each program delivers by month, across all campaigns.', 'Look for months where bursts stack up, since that is where SDR capacity gets tight.'],
+    owners: ['Who owns each campaign and program, and who decides.', 'Click a RACI cell to change it.'],
+    paid: ['The brief the campaigns team hands to the paid media shared service.', 'It carries each campaign\'s audience, offer, budget and MQL target so paid can build the media plan.'],
+    measure: ['How every campaign is measured: pipeline first, efficiency second.', 'These are the definitions to agree with RevOps before the year starts.'],
+    checks: ['Re-adds every total a second way to prove the campaign, channel and region numbers tie out.', 'Anything flagged here is an input worth a second look.']
+  };
+  function guideBox() {
+    const g = GUIDES[tab]; if (!g) return '';
+    let off = false; try { off = localStorage.getItem(STORE_KEY + ':guide') === 'off'; } catch (e) { /* ignore */ }
+    if (off) return '<button type="button" class="linkbtn guide-min" id="guide-on">How to read this tab</button>';
+    return '<div class="guide"><div class="ghead"><b>How to read this tab</b><button type="button" class="linkbtn" id="guide-x">Hide</button></div><ol>' + g.map((x) => '<li>' + x + '</li>').join('') + '</ol>' +
+      '<p class="note">Campaign assumptions can be adjusted. Use <button type="button" class="linkbtn" data-edit>Edit assumptions</button> at the top right.</p></div>';
+  }
   function render() {
     const P = extend(compute());
     const a = document.activeElement, sel = a && 'selectionStart' in a ? [a.selectionStart, a.selectionEnd] : null;
     document.querySelectorAll('#panel .card.upd').forEach((c) => $('upd-holder').appendChild(c));
     $('panel').innerHTML = (VIEWS[tab] || VIEWS2[tab])(P);
     const head = $('panel').firstElementChild;
-    if (head) head.insertAdjacentHTML('afterend', feedsStrip()); else $('panel').insertAdjacentHTML('afterbegin', feedsStrip());
+    if (head) head.insertAdjacentHTML('afterend', guideBox() + feedsStrip()); else $('panel').insertAdjacentHTML('afterbegin', guideBox() + feedsStrip());
     if (UPD[tab]) {
       const card = $('upd-' + UPD[tab]), first = $('panel').querySelector('.feeds');
       if (first) first.after(card); else $('panel').prepend(card);
@@ -794,9 +820,9 @@
         ['MQLs', fmtInt(s.sqo) + ' SQOs ÷ ' + pct(num(S.segments[i].mqlSqo)) + ' MQL → SQO rate', fmtInt(s.mql)],
         ['Leads', fmtInt(s.mql) + ' MQLs ÷ ' + pct(P.r1 * 100) + ' lead → MQL rate', fmtInt(s.leads)],
         ['Bookings', money(s.pipe) + ' pipeline × ' + pct(P.r3 * 100) + ' SQO → closed-won rate', money(s.bookings)]
-      ], 'Change the share, deal size and MQL → SQO rate under Segments, and the other rates under Pipeline goal & funnel.')).join('');
+      ], 'Change the share, deal size and MQL → SQO rate under Segments, and the other rates under Pipeline goal & funnel.', makeup(P, s))).join('');
       const t = P.tot;
-      return '<div><h2>Funnel &amp; motion</h2><p class="lead">Each segment has its own deal size and MQL-to-SQO rate, so the volume needed differs a lot. Smaller deals need far more MQLs per dollar of pipeline. Tap a segment to see how its numbers are built.</p></div>' +
+      return '<div><h2>Funnel &amp; motion</h2><p class="lead">Each segment has its own deal size and MQL-to-SQO rate, so the volume needed differs a lot. Smaller deals need far more MQLs per dollar of pipeline. Tap a segment to see the campaigns and program buys that make it up.</p></div>' +
         '<div class="out"><table class="t" data-export><thead><tr><th>Segment</th><th class="n">Share</th><th class="n">Pipeline</th><th class="n">Avg deal</th><th class="n">SQOs</th><th class="n">MQLs</th><th class="n">Leads</th><th class="n">Bookings</th></tr></thead><tbody>' + rows +
         '</tbody><tfoot><tr><td>Total</td><td class="n">100%</td><td class="n">' + money(t.pipe) + '</td><td class="n">' + money(t.sqo ? t.pipe / t.sqo : 0) + '</td><td class="n">' + fmtInt(t.sqo) + '</td><td class="n">' + fmtInt(t.mql) + '</td><td class="n">' + fmtInt(t.leads) + '</td><td class="n">' + money(t.bookings) + '</td></tr></tfoot></table></div>' +
         '<p class="note">Sales cycle: ' + fmtInt(num(S.cycle)) + ' days, so pipeline created after month ' + Math.max(1, 12 - Math.round(num(S.cycle) / 30)) + ' mostly closes next fiscal year.</p>' + motionBox(P);
@@ -1289,20 +1315,13 @@
     },
     onepage(P) {
       const t = P.tot, B = P.base, pc = P.pace, [pk, pl] = paceStatus(pc.pace);
-      let guideOff = false; try { guideOff = localStorage.getItem(STORE_KEY + ':guide') === 'off'; } catch (e) { /* ignore */ }
-      const guide = guideOff ? '' : '<div class="guide"><div class="ghead"><b>Read this in 2 minutes</b><button type="button" class="linkbtn" id="guide-x">Hide</button></div><ol>' +
-        '<li><b>This page.</b> The number, how it covers what sales needs, the budget, and what needs attention.</li>' +
-        '<li><button type="button" class="linkbtn" data-go="campaigns">HQ strategy → Campaigns</button>. The four campaigns that carry the number. Click any month on a timeline to see what lands and why it is flagged.</li>' +
-        '<li><button type="button" class="linkbtn" data-go="regions">Regions → Regional plans</button>. What each region is actually running, how much of its share it covers, and HQ sign-off.</li>' +
-        '<li><button type="button" class="linkbtn" data-go="pacing">Execution → Pacing</button> and <button type="button" class="linkbtn" data-go="risks">Risks</button>. Plan vs actual, and the early warnings with the contingency we run when one trips.</li>' +
-        '</ol><p class="note">The example is illustrative. Two things are flagged on purpose: SDR capacity in launch months, and regions that haven\'t covered their share yet.</p></div>';
       const camps = P.camps.map((c) => '<tr><td><b>' + esc(c.name) + '</b><div class="note">' + esc(c.offer) + '</div></td><td>' + esc(c.tier) + '</td><td>' + (P.labels[Math.round(num(c.launch)) - 1] || '–') + '</td><td class="n">' + money(c.pipe) + '</td><td class="n">' + money(c.cost) + '</td></tr>').join('');
       const q = P.quarters.map((x) => '<td class="n">' + money(x.pipe) + '</td>').join('');
       const hl = health(P).filter((h) => h[0] !== 'ok').slice(0, 5).map(([k, s]) => hp(k, k === 'fix' ? 'Fix' : 'Watch') + '<span>' + esc(s) + '</span>').join('');
       const asks = S.asks.slice(0, 4).map((a) => '<li><b>' + esc(a.ask) + '</b> <span class="note">· ' + esc(a.who) + (num(a.by) ? ' · by ' + (P.labels[Math.round(num(a.by)) - 1] || '') : '') + '</span></li>').join('');
       const risks = P.risks.filter((r) => r.status !== 'On track').map((r) => '<li>' + riskPill(r.status) + ' ' + esc(r.risk) + '</li>').join('');
       const s80 = P.scen[0], s120 = P.scen[2];
-      return '<div class="op-head"><div><h2>' + esc(S.name || 'Untitled plan') + '</h2><p class="lead">' + esc(S.fy) + ' plan on a page' + (S.product ? ' · ' + esc(S.product) : '') + '</p></div></div>' + guide +
+      return '<div class="op-head"><div><h2>' + esc(S.name || 'Untitled plan') + '</h2><p class="lead">' + esc(S.fy) + ' plan on a page' + (S.product ? ' · ' + esc(S.product) : '') + '</p></div></div>' +
         '<div class="tiles">' +
         '<div class="tile hero"><span>Sourced pipeline</span><b>' + money(t.pipe) + '</b><span>' + (vsLy(t.pipe, B.ly.pipe) || 'set last year to compare') + '</span></div>' +
         '<div class="tile' + (B.covGap > 0.5 ? ' alert' : '') + '"><span>Covers sales need</span><b>' + (B.mktNeed ? coverCell(t.pipe / B.mktNeed) : '–') + '</b><span>' + (B.mktNeed ? 'of ' + money(B.mktNeed) + ' marketing owes' : 'set the sales target') + '</span></div>' +
@@ -1401,8 +1420,23 @@
   function statusPill(st) { return '<span class="pill ' + (st === 'Approved' ? 'ok' : st === 'Submitted' ? 'on' : st === 'Draft' ? 'both' : 'burst') + '">' + esc(st) + '</span>'; }
   // tappable row label and the hidden row that shows how the numbers are built
   function dl(label) { return '<button class="dl" type="button" aria-expanded="false">' + label + '</button>'; }
-  function why(cols, lines, foot) {
-    return '<tr class="why" hidden><td colspan="' + cols + '"><div class="whybox"><b>How this is built</b><dl>' +
+  // The campaigns and program buys behind one segment. Both serve every segment, so each is split by the segment's share.
+  function makeup(P, s) {
+    const f = P.tot.mql ? s.mql / P.tot.mql : 0;
+    const camps = P.camps.map((c) => ({ name: c.name, tier: c.tier, pipe: c.pipe * s.w, mql: c.mql * f })).filter((c) => c.pipe || c.mql);
+    const buys = P.channels.map((c) => ({ name: c.name, runBy: c.runBy, mql: c.mql * f, cost: c.cost * f, cpm: c.mql ? c.cost / c.mql : 0 })).filter((c) => c.mql || c.cost).sort((a, b) => b.cost - a.cost);
+    const sum = (a, k) => a.reduce((x, c) => x + c[k], 0);
+    const bm = sum(buys, 'mql'), bc = sum(buys, 'cost');
+    return '<b>What makes up ' + esc(s.name) + '</b><div class="mk"><table class="t"><thead><tr><th>Campaign</th><th class="n">Pipeline</th><th class="n">MQLs</th></tr></thead><tbody>' +
+      camps.map((c) => '<tr><td>' + esc(c.name) + ' <span class="note">' + esc(c.tier || '') + '</span></td><td class="n">' + money(c.pipe) + '</td><td class="n">' + fmtInt(c.mql) + '</td></tr>').join('') +
+      '</tbody><tfoot><tr><td>Total</td><td class="n">' + money(sum(camps, 'pipe')) + '</td><td class="n">' + fmtInt(sum(camps, 'mql')) + '</td></tr></tfoot></table>' +
+      '<table class="t"><thead><tr><th>Program buy</th><th class="n">MQLs</th><th class="n">Budget</th><th class="n">$ / MQL</th></tr></thead><tbody>' +
+      buys.map((c) => '<tr><td>' + esc(c.name) + ' <span class="note">' + esc(c.runBy || '') + '</span></td><td class="n">' + fmtInt(c.mql) + '</td><td class="n">' + money(c.cost) + '</td><td class="n">' + money(c.cpm) + '</td></tr>').join('') +
+      '</tbody><tfoot><tr><td>Total</td><td class="n">' + fmtInt(bm) + '</td><td class="n">' + money(bc) + '</td><td class="n">' + money(bm ? bc / bm : 0) + '</td></tr></tfoot></table></div>' +
+      '<p class="note">Campaigns and program buys serve both segments, so each is split here by ' + esc(s.name) + '\'s share: ' + pct(s.w * 100) + ' of pipeline and ' + pct(f * 100) + ' of MQLs.</p>';
+  }
+  function why(cols, lines, foot, pre) {
+    return '<tr class="why" hidden><td colspan="' + cols + '"><div class="whybox">' + (pre || '') + '<b>How this is built</b><dl>' +
       lines.map(([k, f, v]) => '<dt>' + k + '</dt><dd>' + f + (v !== '' ? ' = <b>' + v + '</b>' : '') + '</dd>').join('') +
       '</dl>' + (foot ? '<p class="note">' + esc(foot) + '</p>' : '') + '</div></td></tr>';
   }
@@ -1694,7 +1728,10 @@
     setEditing(editing);
     $('btn-edit').onclick = () => { setEditing(!editing); if (editing && getComputedStyle($('btn-open-rail')).display !== 'none') $('btn-open-rail').click(); };
     document.addEventListener('click', (e) => { const g = e.target.closest('[data-go]'); if (!g) return; e.preventDefault(); tab = g.dataset.go; renderTabs(); render(); $('tabs').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-    document.addEventListener('click', (e) => { if (e.target.id === 'guide-x') { try { localStorage.setItem(STORE_KEY + ':guide', 'off'); } catch (x) { /* ignore */ } render(); } });
+    document.addEventListener('click', (e) => {
+      if (e.target.id === 'guide-x' || e.target.id === 'guide-on') { try { localStorage.setItem(STORE_KEY + ':guide', e.target.id === 'guide-x' ? 'off' : 'on'); } catch (x) { /* ignore */ } render(); }
+      if (e.target.closest && e.target.closest('[data-edit]') && !editing) $('btn-edit').click();
+    });
     const setRail = (open) => { rail.classList.toggle('open', open); scrim.classList.toggle('open', open); $('btn-open-rail').setAttribute('aria-expanded', String(open)); };
     $('btn-open-rail').onclick = () => setRail(true);
     $('btn-close-rail').onclick = scrim.onclick = () => setRail(false);

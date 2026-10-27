@@ -365,3 +365,10 @@ details.more>summary::-webkit-details-marker{display:none}
 details.more>summary::before{content:"▸ ";color:var(--faint)}
 details.more[open]>summary::before{content:"▾ "}
 details.more[open]>summary{margin-bottom:8px}
+.whybox .mk{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:6px 0 4px}
+.whybox:has(.mk){max-width:min(1100px,calc(100vw - 64px))}
+.whybox .mk{align-items:start}
+.whybox .mk .t{font-size:13px;width:100%}
+.whybox > b + .mk + .note{margin-bottom:12px}
+.guide-min{align-self:flex-start;font-size:13px}
+.guide ol li .linkbtn,.guide .note .linkbtn{font-weight:600}
