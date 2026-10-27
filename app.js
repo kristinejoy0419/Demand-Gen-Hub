@@ -647,32 +647,8 @@
   }
   const lastIn = {};
 
-  // readiness spider for the hero: each spoke is 0–100% of where the plan needs to be
-  function spider(P) {
-    const peak = Math.max(0, ...P.monthly), A = S.assets, cap = (v) => Math.max(0, Math.min(1, v || 0));
-    const ax = [
-      ['Pipeline coverage', P.base.mktNeed ? P.tot.pipe / P.base.mktNeed : 1, 'funnel'],
-      ['Pacing', P.pace.asOf ? P.pace.pace : 1, 'pacing'],
-      ['Regional plans', P.roll.coverage, 'regions'],
-      ['SDR capacity', peak ? P.sdrCap / peak : 1, 'funnel'],
-      ['Assets live', A.length ? A.filter((a) => a.status === 'Live').length / A.length : 1, 'committee'],
-      ['Team capacity', P.team.length ? P.team.filter((t) => !t.over).length / P.team.length : 1, 'owners']
-    ];
-    const W = 340, H = 236, cx = W / 2, cy = 122, R = 78, n = ax.length;
-    const pt = (i, r) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
-    const ring = (f) => ax.map((_, i) => pt(i, R * f).map((v) => v.toFixed(1)).join(',')).join(' ');
-    const grid = [0.25, 0.5, 0.75, 1].map((f) => '<polygon class="sp-ring' + (f === 1 ? ' full' : '') + '" points="' + ring(f) + '"/>').join('') + ax.map((_, i) => { const [x, y] = pt(i, R); return '<line class="sp-spoke" x1="' + cx + '" y1="' + cy + '" x2="' + x.toFixed(1) + '" y2="' + y.toFixed(1) + '"/>'; }).join('');
-    const shape = '<polygon class="sp-shape" points="' + ax.map(([, v], i) => pt(i, R * cap(v)).map((q) => q.toFixed(1)).join(',')).join(' ') + '"/>';
-    const dots = ax.map(([, v], i) => { const [x, y] = pt(i, R * cap(v)); return '<circle class="sp-dot ' + (v >= 0.95 ? 'ok' : v >= 0.7 ? 'watch' : 'fix') + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4"/>'; }).join('');
-    const labels = ax.map(([l, v, go], i) => {
-      const [x, y] = pt(i, R + 16), anchor = Math.abs(x - cx) < 4 ? 'middle' : x > cx ? 'start' : 'end', dy = y < cy - 10 ? -4 : y > cy + 10 ? 12 : 4;
-      return '<g class="sp-ax" data-go="' + go + '" role="button" tabindex="0" aria-label="' + l + ' ' + Math.round(v * 100) + '%, open"><title>Open ' + l + '</title><text x="' + x.toFixed(1) + '" y="' + (y + dy).toFixed(1) + '" text-anchor="' + anchor + '">' + l + ' <tspan class="' + (v >= 0.95 ? 'ok' : v >= 0.7 ? 'watch' : 'fix') + '">' + Math.round(Math.min(v, 9.99) * 100) + '%</tspan></text></g>';
-    }).join('');
-    return '<div class="sp-title">Plan readiness <span class="note">· dashed ring is 100% · tap a spoke</span></div><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Plan readiness across six measures">' + grid + shape + dots + labels + '</svg>';
-  }
   function render() {
     const P = extend(compute());
-    $('hero-spider').innerHTML = spider(P);
     $('panel').innerHTML = (VIEWS[tab] || VIEWS2[tab])(P);
     if (tab === 'owners') bindRaci();
   }
@@ -1494,8 +1470,13 @@
       wrap.querySelectorAll('.tldet').forEach((d) => { d.hidden = open || d.dataset.for !== id; });
       if (!open) { b.setAttribute('aria-expanded', 'true'); b.classList.add('sel'); }
     });
-    const goSpoke = (e) => { const g = e.target.closest && e.target.closest('[data-go]'); if (!g || (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); tab = g.dataset.go; renderTabs(); render(); $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
-    $('hero-spider').addEventListener('click', goSpoke); $('hero-spider').addEventListener('keydown', goSpoke);
+    const CHEERS = ['You make pipeline look easy. 🙌', 'Your funnel math is so clean it squeaks. 🧼', 'Somewhere a CRO just smiled at your coverage ratio. 😌', 'SDRs everywhere are thanking you for that SLA. 💌',
+      'Spreadsheets fear you. Respectfully. 📊', 'You put the “fun” in funnel. 🎢', 'Plot twist: the buying committee is a fan of yours. 💅', 'Regions sent their plans on time. Just kidding. But you\'ve got this. 😅',
+      'Your MQL → SQO rate called. It\'s proud of you. ✨', 'Legend has it your campaign briefs never need a v2. 🏆', 'Coffee count: high. Pipeline: higher. ☕', 'Go ahead, flex that pipe-to-spend ratio. 💪'];
+    let cheerI = Math.floor(Math.random() * CHEERS.length);
+    const newCheer = () => { cheerI = (cheerI + 1) % CHEERS.length; $('cheer-t').textContent = CHEERS[cheerI]; };
+    $('cheer-t').textContent = CHEERS[cheerI];
+    $('cheer-new').onclick = newCheer; $('spider').onclick = newCheer;
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-print') window.print(); });
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-brief') copyText($('brief-text').innerText, 'Brief copied'); });
     const rail = $('rail'), scrim = $('scrim');
