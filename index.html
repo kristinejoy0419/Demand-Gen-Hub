@@ -30,6 +30,20 @@
     <aside class="rail" id="rail" aria-label="Planning assumptions">
       <div class="rail-head"><h3>Planning assumptions</h3><button class="btn" type="button" id="btn-close-rail">Done</button></div>
       <div class="rail-intro"><b>Planning assumptions</b><span>Set these once when you build the plan: the goal, funnel, audience, programs and regions. Every number in the hub is built from them.</span></div>
+      <details class="card setup" data-card="setup" open>
+        <summary><h3>Start here: GTM brief</h3><small>Claude fills the plan, then shows what's missing</small></summary>
+        <div class="body">
+          <label class="f">Upload your GTM brief<input id="in-brief-file" type="file" accept=".pdf,.docx,.txt,.md"></label>
+          <p class="hint"><span id="brief-file-name">PDF, Word (.docx), text or Markdown.</span> <button class="linkbtn" type="button" id="btn-brief-sample">Try a sample brief</button></p>
+          <label class="f">Or paste it<textarea id="in-brief-paste" rows="3" placeholder="Paste the brief text"></textarea></label>
+          <label class="f">Anthropic API key<input id="in-ai-key-brief" type="password" autocomplete="off" placeholder="sk-ant-..."></label>
+          <p class="hint" id="brief-key-hint">Claude needs a key to read the brief. It stays in this browser tab and is never saved. Without one, the checklist below still shows what each section needs.</p>
+          <div class="btns"><button class="btn primary" id="btn-fill-brief" type="button" disabled>Fill the plan from this brief</button></div>
+          <p class="note" id="brief-status" hidden></p>
+          <div class="wz" id="setup-wizard"></div>
+        </div>
+      </details>
+
       <div class="rail-group">Strategy</div>
       <details class="card" data-card="campaign-and-brief" open>
         <summary><h3>Campaign &amp; brief</h3><small>what we're launching</small></summary>
