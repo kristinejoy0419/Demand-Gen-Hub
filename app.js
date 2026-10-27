@@ -1,4 +1,4 @@
-/* Demand Gen Hub: GTM brief -> integrated demand gen plan.
+/* Global Campaigns Hub: GTM brief -> integrated demand gen plan.
    One state object, editable input tables on the left, computed plan tabs on the right. */
 (function () {
   'use strict';
@@ -755,7 +755,7 @@
     const fact = r.fact && !r.fact.toLowerCase().startsWith(w4) ? ' ' + end(r.fact) : '';
     const ask = end(a.ask);
     if (kind === 'slack') return { subject: '', body: 'Hi [Name], one ask for ' + (S.name || 'our plan') + (by ? ', needed by ' + by : '') + ': ' + ask + '\n' + why + fact + '\nDetail in the tracker under ' + r.path + ': ' + hubLink(r.tab) + '\nHappy to talk it through.' };
-    return { subject: 'Decision needed' + (by ? ' by ' + by : '') + ': ' + a.ask.split(/[:,]/)[0], body: 'Hi [Name],\n\nTo keep ' + (S.name || 'the plan') + ' on track, I need one decision from you' + (by ? ' by ' + by : '') + ':\n\n' + ask + '\n\n' + why + fact + '\n\nThe detail is in the Demand Gen Hub under ' + r.path + ': ' + hubLink(r.tab) + '\n\nHappy to walk through it in 15 minutes this week.\n\nThanks,\n[Your name]' };
+    return { subject: 'Decision needed' + (by ? ' by ' + by : '') + ': ' + a.ask.split(/[:,]/)[0], body: 'Hi [Name],\n\nTo keep ' + (S.name || 'the plan') + ' on track, I need one decision from you' + (by ? ' by ' + by : '') + ':\n\n' + ask + '\n\n' + why + fact + '\n\nThe detail is in the Global Campaigns Hub under ' + r.path + ': ' + hubLink(r.tab) + '\n\nHappy to walk through it in 15 minutes this week.\n\nThanks,\n[Your name]' };
   }
   async function draftAsk(i, kind) {
     const a = S.asks[i]; if (!a) return;
@@ -2211,7 +2211,7 @@
     $('btn-plan-open').onclick = () => $('in-plan-file').click();
     $('in-plan-file').onchange = async (e) => {
       const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-      try { const d = JSON.parse(await f.text()), p = d && d.plan ? d.plan : d; if (!p || !Array.isArray(p.campaigns) || !Array.isArray(p.channels)) throw new Error('not a Demand Gen Hub plan file');
+      try { const d = JSON.parse(await f.text()), p = d && d.plan ? d.plan : d; if (!p || !Array.isArray(p.campaigns) || !Array.isArray(p.channels)) throw new Error('not a Global Campaigns Hub plan file');
         S = fill(p); save(); bindInputs(); showPill(); render(); toast('Opened ' + (S.name || f.name)); } catch (x) { toast('Could not open that file: ' + x.message); }
     };
     $('in-actuals-file').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importActuals(f); };
