@@ -21,7 +21,8 @@
   </header>
 
   <div class="grid">
-    <aside class="rail" aria-label="Plan inputs">
+    <aside class="rail" id="rail" aria-label="Plan inputs">
+      <div class="rail-head"><h3>Plan inputs</h3><button class="btn" type="button" id="btn-close-rail">Done</button></div>
       <details class="card" open>
         <summary><h3>1 · Campaign &amp; brief</h3><small>what we're launching</small></summary>
         <div class="body">
@@ -32,6 +33,11 @@
           <label class="f">Products or solutions in scope<input id="in-product"></label>
           <label class="f">GTM brief notes<textarea id="in-brief" rows="4"></textarea></label>
         </div>
+      </details>
+
+      <details class="card">
+        <summary><h3>Product mix</h3><small>share of pipeline by product</small></summary>
+        <div class="body"><div id="ed-products"></div><p class="hint">Launch month is the plan month a new product goes live. Use 0 for products already in market.</p></div>
       </details>
 
       <details class="card" open>
@@ -46,7 +52,11 @@
             <label class="f">SQO → closed-won %<input id="in-r3" type="number" min="0.1" max="100" step="0.5"></label>
             <label class="f">Sales cycle (days)<input id="in-cycle" type="number" min="1" step="5"></label>
           </div>
-          <p class="hint">MQL → SQO rate and deal size are set per segment below.</p>
+          <div class="row">
+            <label class="f">SDRs working MQLs<input id="in-sdrs" type="number" min="0" step="1"></label>
+            <label class="f">MQLs each SDR can work a month<input id="in-sdrcap" type="number" min="0" step="5"></label>
+          </div>
+          <p class="hint">MQL → SQO rate and deal size are set per segment below. SDR capacity is checked against MQLs by month.</p>
         </div>
       </details>
 
@@ -80,6 +90,27 @@
         <div class="body"><div id="ed-moments"></div><p class="hint">Month 1 is the plan start. Launches lift that month and the next; events and buying seasons lift their own month.</p></div>
       </details>
 
+      <details class="card" open>
+        <summary><h3>9 · Regional plans</h3><small>each regional lead fills in theirs</small></summary>
+        <div class="body">
+          <div class="row">
+            <label class="f">Region<select id="in-rp-region"></select></label>
+            <label class="f">Status<select id="in-rp-status"><option>Not started</option><option>Draft</option><option>Submitted</option></select></label>
+          </div>
+          <div id="ed-rp-programs"></div>
+          <label class="f">What we're adapting locally<textarea id="in-rp-adapt" rows="3"></textarea></label>
+          <div class="btns"><button class="btn primary" type="button" id="btn-rp-copy">Copy my plan</button></div>
+          <label class="f">Paste a region's plan<textarea id="in-rp-paste" rows="3" placeholder="Paste the plan a regional lead sent you"></textarea></label>
+          <div class="btns"><button class="btn" type="button" id="btn-rp-import">Add to the roll-up</button></div>
+          <p class="hint">A regional lead opens the hub, picks their region, enters their programs and copies the plan to send to HQ. HQ pastes it here and it lands in the Regional plans tab.</p>
+        </div>
+      </details>
+
+      <details class="card">
+        <summary><h3>10 · Risks &amp; assumptions</h3><small>likelihood · owner · mitigation</small></summary>
+        <div class="body"><div id="ed-risks"></div></div>
+      </details>
+
       <div class="btns">
         <button class="btn" id="btn-reset" type="button">Reload example</button>
         <button class="btn" id="btn-blank" type="button">Start blank</button>
@@ -96,6 +127,8 @@
     </section>
   </div>
 </div>
+<button class="btn primary inputs-btn" type="button" id="btn-open-rail" aria-controls="rail">Edit inputs</button>
+<div class="scrim" id="scrim"></div>
 <div class="toast" id="toast" hidden></div>
 <script src="app.js"></script>
 </body>

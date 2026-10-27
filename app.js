@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  const STORE_KEY = 'demand-gen-hub:v1';
+  const STORE_KEY = 'demand-gen-hub:v2';
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const FUNCTIONS = ['Demand gen', 'PMM', 'Field', 'Partner', 'Paid (shared svc)', 'Creative', 'RevOps', 'Sales / SDR'];
 
@@ -18,6 +18,12 @@
       goal: 50000000,
       start: '2027-02',
       r1: 22, r3: 25, cycle: 120,
+      sdrs: 5, sdrCap: 100,
+      products: [
+        { name: 'Core work platform', share: 60, launch: 0 },
+        { name: 'AI agent suite for IT', share: 28, launch: 2 },
+        { name: 'Admin & governance add-on', share: 12, launch: 5 }
+      ],
       segments: [
         { name: 'Enterprise', share: 70, acv: 120000, mqlSqo: 22 },
         { name: 'Commercial', share: 30, acv: 35000, mqlSqo: 16 }
@@ -44,7 +50,8 @@
         { id: 'webinar', on: true, name: 'Webinars & virtual events', owner: 'Demand gen', kind: 'Owned', stage: 'Consider', motion: 'Both', runBy: 'Both', share: 14, cpm: 600 },
         { id: 'events', on: true, name: 'Field & flagship events', owner: 'Field', kind: 'Owned', stage: 'Decide', motion: 'Burst', runBy: 'Region', share: 12, cpm: 2000 },
         { id: 'content', on: true, name: 'Content & offers', owner: 'PMM', kind: 'Owned', stage: 'Aware', motion: 'Both', runBy: 'HQ', share: 8, cpm: 400 },
-        { id: 'seo', on: true, name: 'SEO & AI search (GEO)', owner: 'Demand gen', kind: 'Earned', stage: 'Aware', motion: 'Always-on', runBy: 'HQ', share: 8, cpm: 250 },
+        { id: 'seo', on: true, name: 'SEO (organic search)', owner: 'Demand gen', kind: 'Earned', stage: 'Aware', motion: 'Always-on', runBy: 'HQ', share: 5, cpm: 250 },
+        { id: 'aeo', on: true, name: 'AEO / GEO (AI answer engines)', owner: 'PMM', kind: 'Earned', stage: 'Aware', motion: 'Always-on', runBy: 'HQ', share: 3, cpm: 350 },
         { id: 'paid', on: true, name: 'Paid media', owner: 'Paid (shared svc)', kind: 'Paid', stage: 'Aware', motion: 'Both', runBy: 'Both', share: 20, cpm: 1200 },
         { id: 'partner', on: true, name: 'Partner marketing', owner: 'Partner', kind: 'Partner', stage: 'Consider', motion: 'Both', runBy: 'Region', share: 8, cpm: 900 },
         { id: 'sdr', on: true, name: 'SDR outbound & sales plays', owner: 'Sales / SDR', kind: 'Sales', stage: 'Decide', motion: 'Always-on', runBy: 'Region', share: 12, cpm: 1500 },
@@ -55,6 +62,28 @@
         { month: 5, name: 'Launch: admin & governance add-on', type: 'Launch' },
         { month: 8, name: 'Flagship customer event', type: 'Event' },
         { month: 11, name: 'Year-end budget season', type: 'Season' }
+      ],
+      regionPlans: {
+        'North America': { status: 'Submitted', adapt: 'AWS marketplace offers, US public sector proof points', programs: [
+          { name: 'IT leader roadshow (5 cities)', month: 3, budget: 420000, mql: 210 },
+          { name: 'AWS partner co-marketing', month: 6, budget: 150000, mql: 90 },
+          { name: 'Tier 1 exec dinners', month: 9, budget: 180000, mql: 40 }
+        ] },
+        EMEA: { status: 'Draft', adapt: 'Data residency proof points, local partner logos, DE/FR language versions', programs: [
+          { name: 'London + Munich IT summits', month: 4, budget: 260000, mql: 110 },
+          { name: 'GDPR-ready AI governance webinar (DE/FR)', month: 6, budget: 40000, mql: 70 }
+        ] },
+        APJ: { status: 'Draft', adapt: 'Japanese localization, partner-led motion', programs: [
+          { name: 'Sydney + Tokyo partner days', month: 5, budget: 120000, mql: 50 }
+        ] },
+        LATAM: { status: 'Not started', adapt: '', programs: [] }
+      },
+      risks: [
+        { risk: 'A product launch slips a quarter', likelihood: 'High', owner: 'PMM', mitigation: 'Keep always-on programs running; move burst budget to the next moment' },
+        { risk: 'Commercial MQL → SQO lands below plan', likelihood: 'Medium', owner: 'Demand gen', mitigation: 'Tighten scoring with RevOps at the 30-day review' },
+        { risk: 'AI answers cut organic clicks', likelihood: 'Medium', owner: 'Content + web', mitigation: 'Shift SEO effort to AEO/GEO; track AI-referred MQLs' },
+        { risk: 'SDR capacity in launch months', likelihood: 'Medium', owner: 'Sales / SDR', mitigation: 'Route overflow to nurture; stagger regional launches' },
+        { risk: 'Regional plans not submitted on time', likelihood: 'Low', owner: 'Field', mitigation: 'Set a due date; the gap shows in the roll-up' }
       ],
       raci: {}
     };
@@ -67,12 +96,20 @@
       regions: [{ name: 'Global', share: 100, lead: 'HQ' }],
       personas: [{ role: '', part: '', cares: '', aware: '', consider: '', decide: '' }],
       tiers: [{ tier: 'Tier 1 · 1:1', accounts: 0, share: 100, play: '' }],
-      moments: [], raci: {}
+      products: [{ name: '', share: 100, launch: 0 }],
+      moments: [], regionPlans: {}, risks: [], raci: {}
     });
+  }
+  // fill anything a saved or pasted plan is missing
+  function fill(s) {
+    const d = blank();
+    Object.keys(d).forEach((k) => { if (s[k] == null) s[k] = d[k]; });
+    return s;
   }
 
   /* ---------- state ---------- */
-  let S = load() || example();
+  let S = fill(load() || example());
+  let rpSel = null; // region shown in the regional plan input
   let tab = 'summary';
   function load() { try { const v = localStorage.getItem(STORE_KEY); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
   function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } }
@@ -154,7 +191,39 @@
       return Object.assign({}, t, { w: tierW[i], pipe, perAcct: acc ? pipe / acc : 0 });
     });
 
-    return { goal, r1, r3, segs, tot, regions, channels, budget, monthly, momentAt, tiers, labels: monthLabels() };
+    const monthlyCost = Array.from({ length: 12 }, (_, i) => channels.reduce((s, c) => s + c.byMonth[i] * Math.max(0, num(c.cpm)), 0));
+
+    const prodW = norm(S.products, 'share');
+    const products = S.products.map((p, i) => Object.assign({}, p, { w: prodW[i], pipe: tot.pipe * prodW[i], mql: tot.mql * prodW[i], sqo: tot.sqo * prodW[i] }));
+
+    // regional roll-up: HQ and shared programs deliver most of each region's MQLs; region-run programs are what the region owes
+    const fromHq = channels.filter((c) => c.runBy !== 'Region').reduce((s, c) => s + c.mql, 0);
+    const owedAll = channels.filter((c) => c.runBy === 'Region').reduce((s, c) => s + c.mql, 0);
+    regions.forEach((r) => {
+      const pl = S.regionPlans[r.name] || { status: 'Not started', programs: [], adapt: '' };
+      r.plan = pl;
+      r.status = pl.status || 'Not started';
+      r.fromHq = fromHq * r.w;
+      r.owes = owedAll * r.w;
+      r.committed = (pl.programs || []).reduce((s, x) => s + Math.max(0, num(x.mql)), 0);
+      r.spend = (pl.programs || []).reduce((s, x) => s + Math.max(0, num(x.budget)), 0);
+      r.coverage = r.owes ? r.committed / r.owes : 1;
+      r.gap = Math.max(0, r.owes - r.committed);
+    });
+    const roll = regions.reduce((a, r) => ({ mql: a.mql + r.mql, fromHq: a.fromHq + r.fromHq, owes: a.owes + r.owes, committed: a.committed + r.committed, spend: a.spend + r.spend, gap: a.gap + r.gap }),
+      { mql: 0, fromHq: 0, owes: 0, committed: 0, spend: 0, gap: 0 });
+    roll.coverage = roll.owes ? roll.committed / roll.owes : 1;
+
+    const sqoPerMql = tot.mql ? tot.sqo / tot.mql : 0, pipePerMql = tot.mql ? tot.pipe / tot.mql : 0;
+    const quarters = [0, 1, 2, 3].map((q) => {
+      const idx = [q * 3, q * 3 + 1, q * 3 + 2];
+      const mql = idx.reduce((s, i) => s + monthly[i], 0);
+      return { name: 'Q' + (q + 1), months: idx, mql, sqo: mql * sqoPerMql, pipe: mql * pipePerMql, cost: idx.reduce((s, i) => s + monthlyCost[i], 0), moments: idx.flatMap((i) => momentAt[i]) };
+    });
+
+    const sdrCap = Math.max(0, num(S.sdrs)) * Math.max(0, num(S.sdrCap));
+
+    return { goal, r1, r3, segs, tot, regions, roll, channels, budget, monthly, monthlyCost, momentAt, tiers, products, quarters, sdrCap, labels: monthLabels() };
   }
 
   /* ---------- generic editable table ---------- */
@@ -185,7 +254,7 @@
   }
 
   function bindInputs() {
-    const map = { 'in-name': 'name', 'in-fy': 'fy', 'in-product': 'product', 'in-brief': 'brief', 'in-goal': 'goal', 'in-start': 'start', 'in-r1': 'r1', 'in-r3': 'r3', 'in-cycle': 'cycle' };
+    const map = { 'in-name': 'name', 'in-fy': 'fy', 'in-product': 'product', 'in-brief': 'brief', 'in-goal': 'goal', 'in-start': 'start', 'in-r1': 'r1', 'in-r3': 'r3', 'in-cycle': 'cycle', 'in-sdrs': 'sdrs', 'in-sdrcap': 'sdrCap' };
     Object.keys(map).forEach((id) => {
       const el = $(id), k = map[id];
       el.value = S[k] == null ? '' : S[k];
@@ -218,6 +287,60 @@
       { key: 'month', label: 'Month #', type: 'num', w: 50 }, { key: 'name', label: 'Moment', w: 180 },
       { key: 'type', label: 'Type', type: 'select', options: ['Launch', 'Event', 'Season'] }
     ], { noun: 'moment', make: () => ({ month: 1, name: '', type: 'Launch' }) });
+    editor('ed-products', S.products, [
+      { key: 'name', label: 'Product', w: 150 }, { key: 'share', label: 'Pipeline %', type: 'num', w: 60 },
+      { key: 'launch', label: 'Launch month', type: 'num', w: 56 }
+    ], { noun: 'product', make: () => ({ name: '', share: 0, launch: 0 }) });
+    editor('ed-risks', S.risks, [
+      { key: 'risk', label: 'Risk or assumption', type: 'area', w: 150 },
+      { key: 'likelihood', label: 'Likelihood', type: 'select', options: ['High', 'Medium', 'Low'] },
+      { key: 'owner', label: 'Owner', w: 90 }, { key: 'mitigation', label: 'Mitigation', type: 'area', w: 160 }
+    ], { noun: 'risk', make: () => ({ risk: '', likelihood: 'Medium', owner: '', mitigation: '' }) });
+    bindRegionPlan();
+  }
+
+  /* ---------- regional plans: each GEO lead fills in theirs ---------- */
+  const PLAN_TAG = 'DEMAND GEN HUB · REGIONAL PLAN';
+  function regionPlan(name) {
+    if (!S.regionPlans[name]) S.regionPlans[name] = { status: 'Not started', adapt: '', programs: [] };
+    return S.regionPlans[name];
+  }
+  function bindRegionPlan() {
+    const names = S.regions.map((r) => r.name).filter(Boolean);
+    if (!names.includes(rpSel)) rpSel = names[0] || null;
+    const sel = $('in-rp-region');
+    sel.innerHTML = names.map((n) => '<option' + (n === rpSel ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
+    sel.onchange = () => { rpSel = sel.value; bindRegionPlan(); };
+    const has = !!rpSel;
+    ['in-rp-status', 'in-rp-adapt', 'btn-rp-copy'].forEach((id) => { $(id).disabled = !has; });
+    if (!has) { $('ed-rp-programs').innerHTML = '<p class="hint">Add a region above first.</p>'; return; }
+    const pl = regionPlan(rpSel);
+    $('in-rp-status').value = pl.status || 'Not started';
+    $('in-rp-status').onchange = (e) => { pl.status = e.target.value; changed(false); };
+    $('in-rp-adapt').value = pl.adapt || '';
+    $('in-rp-adapt').oninput = (e) => { pl.adapt = e.target.value; changed(false); };
+    editor('ed-rp-programs', pl.programs, [
+      { key: 'name', label: 'Regional program', w: 150 }, { key: 'month', label: 'Month #', type: 'num', w: 46 },
+      { key: 'budget', label: 'Budget $', type: 'num', w: 70 }, { key: 'mql', label: 'MQLs', type: 'num', w: 50 }
+    ], { noun: 'program', make: () => ({ name: '', month: 1, budget: 0, mql: 0 }) });
+  }
+  function planBlock(name) {
+    const pl = regionPlan(name);
+    return PLAN_TAG + '\n' + JSON.stringify({ plan: S.name || '', region: name, status: pl.status, adapt: pl.adapt, programs: pl.programs });
+  }
+  function importPlan(text) {
+    const at = text.indexOf('{');
+    let d;
+    try { d = JSON.parse(text.slice(at, text.lastIndexOf('}') + 1)); } catch (e) { return toast('That doesn\'t look like a regional plan'); }
+    if (at < 0 || !d || !d.region) return toast('That doesn\'t look like a regional plan');
+    if (!S.regions.some((r) => r.name === d.region)) return toast('No region called ' + d.region + ' in this plan');
+    S.regionPlans[d.region] = {
+      status: ['Not started', 'Draft', 'Submitted'].includes(d.status) ? d.status : 'Draft',
+      adapt: String(d.adapt || ''),
+      programs: (Array.isArray(d.programs) ? d.programs : []).map((x) => ({ name: String(x.name || ''), month: num(x.month), budget: num(x.budget), mql: num(x.mql) }))
+    };
+    rpSel = d.region; $('in-rp-paste').value = '';
+    changed(true); toast(d.region + ' plan added to the roll-up');
   }
 
   function changed(rebind) {
@@ -230,8 +353,8 @@
 
   /* ---------- tabs ---------- */
   const TABS = [
-    ['summary', 'Summary'], ['funnel', 'Funnel by segment'], ['regions', 'Global vs regional'], ['channels', 'Channel mix'],
-    ['committee', 'Buying committee & ABM'], ['calendar', 'Calendar'], ['owners', 'Owners'], ['paid', 'Paid brief'], ['measure', 'Measurement']
+    ['summary', 'Summary'], ['quarters', 'Quarterly plan'], ['funnel', 'Funnel by segment'], ['regions', 'Regional plans'], ['channels', 'Channel mix'],
+    ['committee', 'Buying committee & ABM'], ['calendar', 'Calendar'], ['owners', 'Owners'], ['paid', 'Paid brief'], ['measure', 'Measurement'], ['risks', 'Risks']
   ];
   function renderTabs() {
     $('tabs').innerHTML = TABS.map(([k, l]) => '<button class="tab" role="tab" type="button" data-tab="' + k + '" aria-selected="' + (k === tab) + '">' + l + '</button>').join('');
@@ -263,6 +386,7 @@
         '<div class="tile"><span>MQLs needed</span><b>' + fmtInt(t.mql) + '</b><span>' + fmtInt(t.mql / 12) + ' a month</span></div>' +
         '<div class="tile"><span>Program budget</span><b>' + money(P.budget) + '</b><span>' + (s2p ? s2p.toFixed(1) + 'x pipeline to spend' : 'set $ / MQL') + '</span></div>' +
         '</div>' +
+        '<div class="split">' + healthBox(P) + productBox(P) + '</div>' +
         '<div class="split"><div class="box" style="grid-column:1/-1"><h3>Reverse funnel</h3><p class="note">Worked back from the pipeline target. Bars are to scale.</p><div class="funnel">' + funnel + '</div></div></div>' +
         '<div class="box"><h3>MQLs by month</h3><p class="note">Always-on programs run flat; burst programs follow launch moments (marked).</p>' + monthChart(P) + '</div>';
     },
@@ -275,16 +399,45 @@
         '<p class="note">Sales cycle: ' + fmtInt(num(S.cycle)) + ' days, so pipeline created after month ' + Math.max(1, 12 - Math.round(num(S.cycle) / 30)) + ' mostly closes next fiscal year.</p>';
     },
     regions(P) {
-      const rows = P.regions.map((r) => '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.lead) + '</td><td class="n">' + pct(r.w * 100) + '</td><td class="n">' + money(r.pipe) + '</td><td class="n">' + fmtInt(r.sqo) + '</td><td class="n">' + fmtInt(r.mql) + '</td><td class="n">' + fmtInt(r.leads) + '</td></tr>').join('');
-      const by = (v) => P.channels.filter((c) => c.runBy === v).map((c) => '<li>' + esc(c.name) + '</li>').join('') || '<li class="note">None</li>';
-      return '<div><h2>Global vs regional</h2><p class="lead">HQ owns the strategy, message, platforms and measurement. Regions own execution and their slice of the number.</p></div>' +
-        '<div class="out"><table class="t" data-export><thead><tr><th>Region</th><th>Owned by</th><th class="n">Share</th><th class="n">Pipeline</th><th class="n">SQOs</th><th class="n">MQLs</th><th class="n">Leads</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-        '<div class="split">' +
-        '<div class="box"><h3>Run by HQ</h3><p class="note">Needs scale and one consistent story.</p><ul>' + by('HQ') + '</ul></div>' +
-        '<div class="box"><h3>Run by regions</h3><p class="note">Needs local knowledge and sales alignment.</p><ul>' + by('Region') + '</ul></div>' +
-        '<div class="box"><h3>Global spine, local activation</h3><p class="note">HQ builds it once, regions localize it.</p><ul>' + by('Both') + '</ul></div>' +
-        '</div>' +
+      const R = P.roll;
+      const rows = P.regions.map((r) => '<tr><td>' + esc(r.name) + '</td><td>' + statusPill(r.status) + '</td><td class="n">' + money(r.pipe) + '</td><td class="n">' + fmtInt(r.mql) + '</td><td class="n">' + fmtInt(r.fromHq) + '</td><td class="n">' + fmtInt(r.owes) + '</td><td class="n">' + fmtInt(r.committed) + '</td><td class="n">' + money(r.spend) + '</td><td class="n">' + coverCell(r.coverage) + '</td><td class="n">' + fmtInt(r.gap) + '</td></tr>').join('');
+      const hq = P.channels.filter((c) => c.runBy !== 'Region').map((c) => esc(c.name)).join(', ') || 'None';
+      const own = P.channels.filter((c) => c.runBy === 'Region').map((c) => esc(c.name)).join(', ') || 'None';
+      const sections = P.regions.map((r) => {
+        const progs = (r.plan.programs || []).filter((x) => x.name || num(x.mql));
+        const list = progs.length ? '<ul>' + progs.map((x) => '<li>' + esc(x.name || 'Untitled') + ' <span class="note">· month ' + fmtInt(num(x.month)) + ' (' + (P.labels[Math.round(num(x.month)) - 1] || '?') + ') · ' + money(num(x.budget)) + ' · ' + fmtInt(num(x.mql)) + ' MQLs</span></li>').join('') + '</ul>' : '<p class="note">No regional programs yet.</p>';
+        return '<div class="box region' + (r.status === 'Not started' ? ' empty' : '') + '"><div class="rhead"><h3>' + esc(r.name) + '</h3>' + statusPill(r.status) + '</div>' +
+          '<p class="note">' + pct(r.w * 100) + ' of the number · ' + money(r.pipe) + ' pipeline · ' + fmtInt(r.mql) + ' MQLs' + (r.lead ? ' · owned by ' + esc(r.lead) : '') + '</p>' +
+          '<div><b>HQ delivers</b> ' + fmtInt(r.fromHq) + ' MQLs from global programs</div>' +
+          '<div><b>Region owes</b> ' + fmtInt(r.owes) + ' MQLs from its own programs</div>' + list +
+          (r.plan.adapt ? '<div><b>Adapting locally</b> ' + esc(r.plan.adapt) + '</div>' : '') +
+          '<div class="' + (r.gap > 0.5 ? 'gap' : 'ok') + '">' + (r.gap > 0.5 ? 'Gap: ' + fmtInt(r.gap) + ' MQLs' : 'Covered') + ' · ' + coverCell(r.coverage) + ' coverage</div></div>';
+      }).join('');
+      return '<div><h2>Regional plans</h2><p class="lead">HQ owns the strategy, message, platforms and measurement. Each region owns its slice of the number and enters its own programs in the left pane, under Regional plans.</p></div>' +
+        '<div class="out"><table class="t" data-export><thead><tr><th>Region</th><th>Status</th><th class="n">Pipeline</th><th class="n">MQL target</th><th class="n">From HQ programs</th><th class="n">Region owes</th><th class="n">Committed</th><th class="n">Regional budget</th><th class="n">Coverage</th><th class="n">Gap</th></tr></thead><tbody>' + rows +
+        '</tbody><tfoot><tr><td>Total</td><td>' + P.regions.filter((r) => r.status === 'Submitted').length + ' of ' + P.regions.length + ' submitted</td><td class="n">' + money(P.tot.pipe) + '</td><td class="n">' + fmtInt(R.mql) + '</td><td class="n">' + fmtInt(R.fromHq) + '</td><td class="n">' + fmtInt(R.owes) + '</td><td class="n">' + fmtInt(R.committed) + '</td><td class="n">' + money(R.spend) + '</td><td class="n">' + coverCell(R.coverage) + '</td><td class="n">' + fmtInt(R.gap) + '</td></tr></tfoot></table></div>' +
+        '<p class="note">HQ programs: ' + hq + '. Region-run programs: ' + own + '. Change who runs a program in Channels &amp; programs.</p>' +
+        '<div class="regions">' + sections + '</div>' +
         '<div class="box"><h3>Keep consistent vs adapt</h3><div class="split"><div><b>Keep consistent</b><ul><li>Positioning and campaign theme</li><li>Target account criteria and ABM tiers</li><li>Brand and creative system</li><li>Funnel definitions and attribution</li></ul></div><div><b>Adapt by region</b><ul><li>Language and local proof points</li><li>Channel mix and offers</li><li>Timing around local seasons and holidays</li><li>Compliance, such as GDPR in EMEA</li></ul></div></div></div>';
+    },
+    quarters(P) {
+      const rows = P.quarters.map((q) => '<tr><td><b>' + q.name + '</b></td><td>' + q.months.map((i) => P.labels[i]).join(', ') + '</td><td class="n">' + fmtInt(q.mql) + '</td><td class="n">' + fmtInt(q.sqo) + '</td><td class="n">' + money(q.pipe) + '</td><td class="n">' + money(q.cost) + '</td><td>' + (esc(q.moments.join(' · ')) || '<span class="note">Always-on only</span>') + '</td></tr>').join('');
+      const tq = P.quarters.reduce((a, q) => ({ mql: a.mql + q.mql, sqo: a.sqo + q.sqo, pipe: a.pipe + q.pipe, cost: a.cost + q.cost }), { mql: 0, sqo: 0, pipe: 0, cost: 0 });
+      const split = (items) => items.map((x) => '<tr><td>' + esc(x.name) + '</td>' + P.quarters.map((q) => '<td class="n">' + money(q.pipe * x.w) + '</td>').join('') + '<td class="n">' + money(P.tot.pipe * x.w) + '</td></tr>').join('');
+      const qh = P.quarters.map((q) => '<th class="n">' + q.name + '</th>').join('');
+      return '<div><h2>Quarterly plan</h2><p class="lead">The plan as leadership and finance read it: what lands each quarter, and what it costs.</p></div>' +
+        '<div class="out"><table class="t" data-export><thead><tr><th>Quarter</th><th>Months</th><th class="n">MQLs</th><th class="n">SQOs</th><th class="n">Pipeline</th><th class="n">Program budget</th><th>Moments</th></tr></thead><tbody>' + rows +
+        '</tbody><tfoot><tr><td>Year</td><td></td><td class="n">' + fmtInt(tq.mql) + '</td><td class="n">' + fmtInt(tq.sqo) + '</td><td class="n">' + money(tq.pipe) + '</td><td class="n">' + money(tq.cost) + '</td><td></td></tr></tfoot></table></div>' +
+        '<h3>Pipeline by region and quarter</h3><div class="out"><table class="t"><thead><tr><th>Region</th>' + qh + '<th class="n">Year</th></tr></thead><tbody>' + split(P.regions) + '</tbody></table></div>' +
+        '<h3>Pipeline by segment and quarter</h3><div class="out"><table class="t"><thead><tr><th>Segment</th>' + qh + '<th class="n">Year</th></tr></thead><tbody>' + split(P.segs) + '</tbody></table></div>' +
+        '<p class="note">Quarters start at the plan start month. Budget follows when each program delivers its MQLs.</p>';
+    },
+    risks() {
+      const order = { High: 0, Medium: 1, Low: 2 };
+      const rows = S.risks.slice().sort((a, b) => (order[a.likelihood] ?? 3) - (order[b.likelihood] ?? 3)).map((r) => '<tr><td>' + esc(r.risk) + '</td><td>' + likePill(r.likelihood) + '</td><td>' + esc(r.owner) + '</td><td>' + esc(r.mitigation) + '</td></tr>').join('') ||
+        '<tr><td colspan="4" class="note">No risks yet. Add them in the left pane, under Risks &amp; assumptions.</td></tr>';
+      return '<div><h2>Risks &amp; assumptions</h2><p class="lead">What could move the number, who watches it, and what we do if it happens. Review it at every quarterly plan reset.</p></div>' +
+        '<div class="out"><table class="t" data-export><thead><tr><th>Risk or assumption</th><th>Likelihood</th><th>Owner</th><th>Mitigation</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
     },
     channels(P) {
       const maxW = Math.max(0.001, ...P.channels.map((c) => c.w));
@@ -336,6 +489,12 @@
         ['Pipeline to program spend', P.budget ? (t.pipe / P.budget).toFixed(1) + 'x' : '–', 'Monthly', 'Demand gen + Finance', 'Budget tracker + CRM'],
         ['Tier 1 account engagement', 'Buying committee coverage', 'Monthly', 'Demand gen + Sales', 'ABM platform']
       ];
+      const seo = P.channels.find((c) => c.id === 'seo'), aeo = P.channels.find((c) => c.id === 'aeo');
+      if (seo) kpis.push(['SEO: organic MQLs', fmtInt(seo.mql), 'Monthly', esc(seo.owner), 'Web analytics + marketing automation'],
+        ['SEO: non-brand organic sessions and rankings', 'Priority buyer terms on page one', 'Monthly', esc(seo.owner), 'Search console + rank tracker']);
+      if (aeo) kpis.push(['AEO/GEO: AI citation rate', 'Cited on tracked buyer prompts', 'Monthly', esc(aeo.owner), 'AI visibility tracker'],
+        ['AEO/GEO: share of answer', 'vs top 3 competitors', 'Monthly', esc(aeo.owner), 'AI visibility tracker'],
+        ['AEO/GEO: AI-referred sessions and MQLs', fmtInt(aeo.mql) + ' MQLs', 'Monthly', esc(aeo.owner), 'Web analytics (AI referrers)']);
       const rows = kpis.map((k) => '<tr><td><b>' + k[0] + '</b></td><td class="n">' + k[1] + '</td><td>' + k[2] + '</td><td>' + k[3] + '</td><td>' + k[4] + '</td></tr>').join('');
       return '<div><h2>Measurement</h2><p class="lead">Pipeline first, efficiency second. Agree on these definitions with RevOps before the year starts, and report from one shared dashboard.</p></div>' +
         '<div class="out"><table class="t" data-export><thead><tr><th>Metric</th><th class="n">Target</th><th>Review</th><th>Owner</th><th>Source</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
@@ -344,6 +503,38 @@
     }
   };
 
+  function statusPill(st) { return '<span class="pill ' + (st === 'Submitted' ? 'on' : st === 'Draft' ? 'both' : 'burst') + '">' + esc(st) + '</span>'; }
+  function likePill(l) { return '<span class="pill ' + (l === 'High' ? 'burst' : l === 'Medium' ? 'both' : 'on') + '">' + esc(l || '–') + '</span>'; }
+  function coverCell(c) { return Math.round(Math.min(c, 9.99) * 100) + '%'; }
+
+  function health(P) {
+    const out = [];
+    const over = P.monthly.map((v, i) => [v, i]).filter(([v]) => P.sdrCap > 0 && v > P.sdrCap + 0.5);
+    if (P.sdrCap <= 0) out.push(['watch', 'Set SDR headcount to check follow-up capacity']);
+    else if (over.length) out.push(['fix', 'SDR capacity is over in ' + over.map(([, i]) => P.labels[i]).join(', ') + ' (' + fmtInt(Math.max(...over.map(([v]) => v))) + ' MQLs vs ' + fmtInt(P.sdrCap) + ' a month)']);
+    else out.push(['ok', 'SDRs can work every month\'s MQLs (' + fmtInt(P.sdrCap) + ' a month)']);
+    const sub = P.regions.filter((r) => r.status === 'Submitted').length;
+    const cov = P.roll.coverage;
+    out.push([sub === P.regions.length && cov >= 0.95 ? 'ok' : 'fix', sub + ' of ' + P.regions.length + ' regions submitted · regional coverage ' + coverCell(cov)]);
+    const lateFrom = Math.max(1, 12 - Math.round(num(S.cycle) / 30));
+    if (lateFrom < 12) out.push(['watch', 'Pipeline sourced after month ' + lateFrom + ' (' + P.labels[lateFrom - 1] + ') mostly closes next fiscal year']);
+    const paid = P.channels.filter((c) => c.owner === 'Paid (shared svc)').reduce((s, c) => s + c.w, 0);
+    out.push([paid > 0.35 ? 'watch' : 'ok', 'Paid is ' + pct(paid * 100) + ' of the mix' + (paid > 0.35 ? ', so the plan leans on a team you don\'t run' : '')]);
+    const r = P.budget ? P.tot.pipe / P.budget : 0;
+    out.push([r === 0 ? 'watch' : r < 5 ? 'fix' : r < 10 ? 'watch' : 'ok', r ? 'Pipeline to spend ' + r.toFixed(1) + 'x' : 'Set cost per MQL to see pipeline to spend']);
+    const high = S.risks.filter((x) => x.likelihood === 'High').length;
+    if (high) out.push(['watch', high + ' high-likelihood risk' + (high > 1 ? 's' : '') + ' on the Risks tab']);
+    const rank = { fix: 0, watch: 1, ok: 2 };
+    return out.sort((a, b) => rank[a[0]] - rank[b[0]]);
+  }
+  function healthBox(P) {
+    const lab = { fix: 'Fix', watch: 'Watch', ok: 'OK' };
+    return '<div class="box"><h3>Plan health</h3><div class="health">' + health(P).map(([k, t]) => '<span class="hp ' + k + '">' + lab[k] + '</span><span>' + esc(t) + '</span>').join('') + '</div></div>';
+  }
+  function productBox(P) {
+    const rows = P.products.map((p) => '<tr><td>' + esc(p.name || 'Untitled') + (num(p.launch) ? ' <span class="note">· launches month ' + fmtInt(num(p.launch)) + '</span>' : '') + '</td><td class="n">' + pct(p.w * 100) + '</td><td class="n">' + money(p.pipe) + '</td><td class="n">' + fmtInt(p.mql) + '</td></tr>').join('');
+    return '<div class="box"><h3>Product mix</h3><div class="out"><table class="t"><thead><tr><th>Product</th><th class="n">Share</th><th class="n">Pipeline</th><th class="n">MQLs</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  }
   function motionPill(m) { return '<span class="pill ' + (m === 'Always-on' ? 'on' : m === 'Burst' ? 'burst' : 'both') + '">' + esc(m) + '</span>'; }
 
   function monthChart(P) {
@@ -461,7 +652,14 @@
     $('btn-csv').onclick = () => { const d = tableData(); if (!d) return toast('No table on this tab'); copyText(d.map((r) => r.map((c) => /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c).join(',')).join('\n'), 'CSV copied'); };
     $('btn-reset').onclick = () => { S = example(); save(); bindInputs(); $('example-pill').hidden = false; render(); toast('Example reloaded'); };
     $('btn-blank').onclick = () => { S = blank(); save(); bindInputs(); $('example-pill').hidden = true; render(); toast('Started a blank plan'); };
+    $('btn-rp-copy').onclick = () => { if (rpSel) copyText(planBlock(rpSel), rpSel + ' plan copied. Send it to HQ'); };
+    $('btn-rp-import').onclick = () => { const v = $('in-rp-paste').value.trim(); if (v) importPlan(v); else toast('Paste a plan first'); };
     document.addEventListener('click', (e) => { if (e.target.id === 'btn-brief') copyText($('brief-text').innerText, 'Brief copied'); });
+    const rail = $('rail'), scrim = $('scrim');
+    const setRail = (open) => { rail.classList.toggle('open', open); scrim.classList.toggle('open', open); $('btn-open-rail').setAttribute('aria-expanded', String(open)); };
+    $('btn-open-rail').onclick = () => setRail(true);
+    $('btn-close-rail').onclick = scrim.onclick = () => setRail(false);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setRail(false); });
   }
 
   /* ---------- boot ---------- */
