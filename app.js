@@ -1441,6 +1441,9 @@
     return rows.map((m) => [m[0] || 'Milestone', L + Math.round(num(m[1])), m[2] || '', m[3] || m[0] || 'Milestone']);
   }
   const msWhen = (o) => (o === 0 ? 'Launch month' : Math.abs(o) + ' month' + (Math.abs(o) === 1 ? '' : 's') + (o < 0 ? ' before' : ' after') + ' launch');
+  // how fast a program's spend can come out mid-year, and how much of it
+  const CUT_SPEED = { paid: 'Fast', content: 'Fast', webinar: 'Medium', partner: 'Medium', seo: 'Medium', aeo: 'Medium', email: 'Medium', product: 'Medium', events: 'Slow', sdr: 'Slow' };
+  const CUT_FLEX = { Fast: 1, Medium: 0.6, Slow: 0.3 }, CUT_CAP = { Fast: 0.6, Medium: 0.4, Slow: 0.2 }, CUT_RETURN = 0.75;
   function extend(P) {
     const ppm = P.tot.mql ? P.tot.pipe / P.tot.mql : 0, spm = P.tot.mql ? P.tot.sqo / P.tot.mql : 0;
     P.ppm = ppm; P.spm = spm;
@@ -1459,13 +1462,22 @@
     const pace = cum.pipe.plan ? cum.pipe.act / cum.pipe.plan : 1;
     const restPlan = months.slice(asOf).reduce((s, m) => s + m.plan.pipe, 0);
     P.pace = { months, asOf, cum, pace, forecast: cum.pipe.act + restPlan * pace, restPlan };
-    // scenarios: cut the least efficient spend first, add to the most efficient at a lower marginal return
+    // scenarios: add to the most efficient at a lower marginal return
     const byEff = P.channels.filter((c) => c.cost > 0).map((c) => ({ c, eff: c.pipe / c.cost })).sort((a, b) => a.eff - b.eff);
+    // cuts weigh efficiency against how fast the money can come out, and protect what carries a Tier 1 launch.
+    // The last dollars in a program earn the least, so a cut loses 75% of the average return, not all of it.
+    const t1 = P.camps.filter((c) => c.tier === 'Tier 1 launch' && c.status !== 'Done');
+    P.cutOrder = byEff.map(({ c, eff }) => {
+      const sp = CUT_SPEED[c.id] || (c.motion === 'Burst' ? 'Slow' : 'Medium'), camp = t1.find((x) => x.chans.some((y) => y.id === c.id));
+      const cap = camp ? 0.25 : CUT_CAP[sp], score = eff / CUT_FLEX[sp];
+      return { c, eff, speed: sp, protect: camp ? camp.name : '', cap, score, lost: c.cost * cap * eff * CUT_RETURN };
+    }).sort((a, b) => !!a.protect - !!b.protect || a.score - b.score);
     const scen = (f) => {
       let delta = P.budget * (f - 1), pipe = P.tot.pipe; const moves = [];
       if (delta < 0) {
         let left = -delta;
-        for (const { c, eff } of byEff) { if (left <= 0) break; const cut = Math.min(left, c.cost * 0.6); pipe -= cut * eff; left -= cut; moves.push('cut ' + c.name + ' by ' + money(cut)); }
+        for (const { c, eff, cap } of P.cutOrder) { if (left <= 0) break; const cut = Math.min(left, c.cost * cap); pipe -= cut * eff * CUT_RETURN; left -= cut; moves.push('cut ' + c.name + ' by ' + money(cut)); }
+        if (left > 0.5) moves.push(money(left) + ' more would have to come from protected or committed spend');
       } else if (delta > 0) {
         const a = addSpend({ cutList: byEff }, delta); pipe += a.pipe; moves.push(...a.moves);
       }
@@ -1777,7 +1789,7 @@
         '<div class="box"><h3>What needs attention</h3><div class="health">' + (hl || '<span class="note">Nothing flagged.</span>') + '</div></div></div>' +
         '<div class="box"><h3>Pipeline by quarter</h3><div class="out"><table class="t"><thead><tr>' + P.quarters.map((x) => '<th class="n">' + x.name + '</th>').join('') + '<th class="n">Year</th></tr></thead><tbody><tr>' + q + '<td class="n"><b>' + money(t.pipe) + '</b></td></tr></tbody></table></div></div>' +
         '<div class="split"><div class="box"><h3>What I need from leadership</h3><ul>' + (asks || '<li class="note">No asks yet</li>') + '</ul></div>' +
-        '<div class="box"><h3>If the budget moves</h3><p>At 80%: ' + money(s80.pipe) + ' pipeline (' + money(s80.pipe - t.pipe) + '). First cuts: ' + esc(P.cutList.slice(0, 2).map((x) => x.c.name).join(', ')) + '.</p><p>At 120%: ' + money(s120.pipe) + ' pipeline (+' + money(s120.pipe - t.pipe) + '): ' + esc(s120.moves.slice(0, 3).join('; ')) + (s120.moves.length > 3 ? ' and more' : '') + '. Extra dollars earn about half the average return.</p></div>' +
+        '<div class="box"><h3>If the budget moves</h3><p>At 80%: ' + money(s80.pipe) + ' pipeline (' + money(s80.pipe - t.pipe) + '). First cuts: ' + esc(P.cutOrder.slice(0, 2).map((x) => x.c.name).join(', ')) + '.</p><p>At 120%: ' + money(s120.pipe) + ' pipeline (+' + money(s120.pipe - t.pipe) + '): ' + esc(s120.moves.slice(0, 3).join('; ')) + (s120.moves.length > 3 ? ' and more' : '') + '. Extra dollars earn about half the average return.</p></div>' +
         '<div class="box"><h3>Risks being watched</h3><ul class="plain">' + (risks || '<li class="note">None</li>') + '</ul></div></div>';
     },
     campaigns(P) {
@@ -1834,13 +1846,15 @@
     },
     scenarios(P) {
       const rows = P.scen.map((s) => '<tr' + (s.f === 1 ? ' class="base"' : '') + '><td><b>' + Math.round(s.f * 100) + '% budget</b></td><td class="n">' + money(s.budget) + '</td><td class="n">' + money(s.pipe) + '</td><td class="n">' + (s.f === 1 ? '–' : (s.pipe >= P.tot.pipe ? '+' : '') + money(s.pipe - P.tot.pipe)) + '</td><td class="n">' + fmtInt(s.mql) + '</td><td class="n">' + (s.budget ? (s.pipe / s.budget).toFixed(1) + 'x' : '–') + '</td><td>' + (esc(s.moves.join('; ')) || 'Plan as built') + '</td></tr>').join('');
-      const cut = P.cutList.map((x, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(x.c.name) + '</td><td class="n">' + money(x.c.cost) + '</td><td class="n">' + x.eff.toFixed(1) + 'x</td><td class="n">' + money(x.c.cost * 0.6 * x.eff) + '</td></tr>').join('');
+      const cut = P.cutOrder.map((x, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(x.c.name) + (x.protect ? '<div class="note">Protected: carries ' + esc(x.protect) + '</div>' : '') + '</td><td class="n">' + money(x.c.cost) + '</td><td class="n">' + x.eff.toFixed(1) + 'x</td><td>' + x.speed + (x.speed === 'Slow' ? ' <span class="note">(' + (x.c.id === 'sdr' ? 'headcount' : 'contracted') + ')</span>' : '') + '</td><td class="n">' + Math.round(x.cap * 100) + '% · ' + money(x.c.cost * x.cap) + '</td><td class="n">' + money(x.lost) + '</td></tr>').join('');
       const asks = S.asks.map((a, i) => '<tr><td><b>' + esc(a.ask) + '</b>' + askBtns(i) + draftBox(i) + '</td><td>' + esc(a.who) + '</td><td>' + (num(a.by) ? P.labels[Math.round(num(a.by)) - 1] || '' : '–') + '</td><td>' + esc(a.why) + '</td></tr>').join('') || '<tr><td colspan="4" class="note">No asks yet. Add them in the left pane.</td></tr>';
       return '<div><h2>Scenarios &amp; asks</h2><p class="lead">What happens to pipeline if the budget moves, what gets cut first, and the decisions needed from leadership to deliver the plan.</p></div>' +
         '<h3>What I need from leadership</h3><div class="out"><table class="t" data-export><thead><tr><th>Ask or decision</th><th>From</th><th>By</th><th>Why it matters</th></tr></thead><tbody>' + asks + '</tbody></table></div>' +
         '<h3>Budget scenarios</h3><div class="out"><table class="t"><thead><tr><th>Scenario</th><th class="n">Budget</th><th class="n">Pipeline</th><th class="n">Change</th><th class="n">MQLs</th><th class="n">Pipe : spend</th><th>What changes</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-        '<p class="note">Cuts come out of the least efficient programs first, up to 60% of each. Added budget goes to the most efficient programs first, up to half again each one\'s budget, at half their average return, since the next dollar works less hard than the first.</p>' +
-        '<h3>Cut order</h3><div class="out"><table class="t"><thead><tr><th>#</th><th>Program</th><th class="n">Budget</th><th class="n">Pipe : spend</th><th class="n">Pipeline lost at a 60% cut</th></tr></thead><tbody>' + cut + '</tbody></table></div>';
+        '<p class="note">Cuts follow the cut order below. Added budget goes to the most efficient programs first, up to half again each one\'s budget, at half their average return, since the next dollar works less hard than the first.</p>' +
+        '<h3>Cut order</h3><p class="note">Ranked by efficiency and by how fast the money can come out: paid can stop this week, events are contracted months ahead, SDR spend is headcount. Programs carrying a Tier 1 launch are protected and cut last, at most 25%. A cut loses about 75% of the program\'s average return, since the last dollars in work the least.</p>' +
+        '<div class="out"><table class="t"><thead><tr><th>#</th><th>Program</th><th class="n">Budget</th><th class="n">Pipe : spend</th><th>How fast it comes out</th><th class="n">Can cut this year</th><th class="n">Pipeline lost</th></tr></thead><tbody>' + cut + '</tbody></table></div>' +
+        '<p class="note">Pipe : spend counts sourced pipeline only. Programs that create demand, like events and paid, also influence deals other programs get credit for, so test with a holdout before cutting one deeply.</p>';
     }
   };
   function teamBox(P) {
