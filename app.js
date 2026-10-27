@@ -677,6 +677,171 @@
     changed(true); toast(d.region + ' plan added to the roll-up');
   }
 
+  /* ---------- GTM brief agent + setup wizard ---------- */
+  // what a complete plan needs, in the order a planner fills it; each check returns what is still missing ('' = done)
+  const sum = (a, k) => a.reduce((x, r) => x + num(r[k]), 0);
+  const off100 = (a, k) => Math.abs(sum(a, k) - 100) > 1;
+  const SETUP = [
+    ['brief', 'campaign-and-brief', 'Campaign & brief', () => [!S.name && 'a plan name', !S.fy && 'the fiscal year', !S.brief && 'the brief'].filter(Boolean).join(', ')],
+    ['goal', 'pipeline-goal-and-funnel', 'Pipeline goal & funnel', () => [!(num(S.goal) > 0) && 'the sourced pipeline goal', !S.start && 'the plan start month', !(num(S.r1) > 0) && 'lead → MQL rate', !(num(S.r3) > 0) && 'SQO → won rate', !(num(S.cycle) > 0) && 'sales cycle'].filter(Boolean).join(', ')],
+    ['targets', 'targets-and-baseline', 'Targets & baseline', () => [!(num(S.salesTarget) > 0) && 'the sales bookings target', !(num(S.lyPipe) > 0) && 'last year\'s pipeline'].filter(Boolean).join(', ')],
+    ['products', 'product-mix', 'Product mix', () => !S.products.some((p) => p.name) ? 'the products in scope' : off100(S.products, 'share') ? 'product shares add to ' + Math.round(sum(S.products, 'share')) + '%, not 100%' : ''],
+    ['campaigns', 'campaigns', 'Campaigns', () => !S.campaigns.length ? 'the campaigns that carry the number' : off100(S.campaigns, 'share') ? 'campaign shares add to ' + Math.round(sum(S.campaigns, 'share')) + '%, not 100%' : S.campaigns.some((c) => !c.offer || !c.audience) ? 'a hero offer and audience for every campaign' : ''],
+    ['segments', 'segments', 'Segments', () => off100(S.segments, 'share') ? 'segment shares add to ' + Math.round(sum(S.segments, 'share')) + '%, not 100%' : S.segments.some((s) => !(num(s.acv) > 0) || !(num(s.mqlSqo) > 0)) ? 'deal size and MQL → SQO rate for every segment' : ''],
+    ['regions', 'regions', 'Regions', () => off100(S.regions, 'share') ? 'region shares add to ' + Math.round(sum(S.regions, 'share')) + '%, not 100%' : S.regions.some((r) => !r.lead) ? 'an owner for every region' : ''],
+    ['committee', 'buying-committee', 'Buying committee', () => !S.personas.some((p) => p.role) ? 'the roles in the buying committee' : ''],
+    ['channels', 'channels-and-programs', 'Channels & programs', () => { const on = S.channels.filter((c) => c.on); return !on.length ? 'the programs you will run' : off100(on, 'share') ? 'program shares add to ' + Math.round(sum(on, 'share')) + '%, not 100%' : on.some((c) => !(num(c.cpm) > 0)) ? 'cost per MQL for every program' : ''; }],
+    ['moments', 'launch-moments', 'Launch moments', () => !S.moments.length ? 'launches, events or buying seasons' : ''],
+    ['regional', 'regional-plans', 'Regional plans', () => { const n = S.regions.filter((r) => regionPlan(r.name).status === 'Not started').length; return n ? n + ' region' + (n === 1 ? ' has' : 's have') + ' no plan yet' : ''; }]
+  ];
+  function setupState() { return SETUP.map(([id, card, label, check]) => ({ id, card, label, gap: check() })); }
+  function wizardHtml(compact) {
+    const st = setupState(), done = st.filter((s) => !s.gap).length, next = st.find((s) => s.gap);
+    const su = S.setup || {}, qs = (su.missing || []).filter((m) => !m.done);
+    const head = '<div class="wz-head"><b>' + done + ' of ' + st.length + ' ready</b><div class="wz-bar"><i style="width:' + (done / st.length * 100).toFixed(1) + '%"></i></div></div>';
+    const nextBox = next ? '<div class="wz-next"><span class="wz-k">Next</span><b>' + esc(next.label) + '</b><span>Needs ' + esc(next.gap) + '.</span>' +
+      qs.filter((m) => m.step === next.id).slice(0, 2).map((m) => '<span class="note">Claude asks: ' + esc(m.question) + '</span>').join('') +
+      '<button type="button" class="btn primary" data-open-card="' + next.card + '">Open ' + esc(next.label) + '</button></div>' : '<div class="wz-next ok"><b>Every section has what it needs.</b></div>';
+    if (compact) return head + nextBox;
+    const list = '<ol class="wz-list">' + st.map((s) => '<li class="' + (s.gap ? '' : 'ok') + '"><button type="button" class="linkbtn" data-open-card="' + s.card + '">' + esc(s.label) + '</button>' + (s.gap ? '<span>' + esc(s.gap) + '</span>' : '') + '</li>').join('') + '</ol>';
+    const ask = qs.length ? '<div class="wz-qs"><b>Claude\'s questions</b><p class="hint">Answer what you can. Claude updates the plan from your answers.</p>' +
+      qs.map((m) => '<label class="f">' + esc(m.question) + '<input type="text" data-wz-q="' + (su.missing.indexOf(m)) + '" value="' + esc(m.answer || '') + '"></label>').join('') +
+      '<div class="btns"><button type="button" class="btn primary" id="btn-wz-send"' + (aiKey ? '' : ' disabled') + '>Send answers to Claude</button></div></div>' : '';
+    const assumed = (su.assumed || []).length ? '<details class="sub"><summary>What Claude assumed (' + su.assumed.length + ')</summary><ul class="wz-as">' + su.assumed.map((a) => '<li>' + esc(a) + '</li>').join('') + '</ul></details>' : '';
+    const from = su.file ? '<p class="hint">Filled from <b>' + esc(su.file) + '</b>' + (su.at ? ' on ' + esc(su.at) : '') + (su.summary ? '. ' + esc(su.summary) : '') + '</p>' : '';
+    return head + from + nextBox + ask + assumed + list;
+  }
+  function renderWizard() {
+    const w = $('setup-wizard'); if (!w) return;
+    if (w.contains(document.activeElement) && document.activeElement.dataset.wzQ != null) return; // don't wipe an answer mid-typing
+    w.innerHTML = wizardHtml(false);
+    const b = $('btn-fill-brief'); if (b) b.disabled = !aiKey || busy;
+    const h = $('brief-key-hint'); if (h) h.hidden = !!aiKey;
+  }
+
+  // the brief as Claude reads it: a PDF goes in as a document, everything else as text
+  let briefDoc = null, busy = false;
+  async function readBrief(f) {
+    if (!f) return;
+    const name = f.name, ext = (name.split('.').pop() || '').toLowerCase();
+    try {
+      if (ext === 'pdf') {
+        const buf = new Uint8Array(await f.arrayBuffer()); let bin = '';
+        for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+        briefDoc = { name, pdf: btoa(bin) };
+      } else if (ext === 'docx') {
+        const X = await loadXlsx(), cfb = X.CFB.read(new Uint8Array(await f.arrayBuffer()), { type: 'array' }), at = cfb.FullPaths.findIndex((x) => /word\/document\.xml$/.test(x)), doc = at < 0 ? null : cfb.FileIndex[at];
+        if (!doc) throw new Error('no document text inside');
+        const xml = new TextDecoder().decode(doc.content);
+        const text = xml.replace(/<w:tab\/>/g, '\t').replace(/<\/w:p>/g, '\n').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, '\'').replace(/\n{3,}/g, '\n\n').trim();
+        briefDoc = { name, text };
+      } else briefDoc = { name, text: await f.text() };
+      $('brief-file-name').textContent = name + ' is ready.';
+      toast(aiKey ? 'Brief loaded. Fill the plan when ready' : 'Brief loaded. Add your API key to let Claude fill the plan');
+    } catch (e) { briefDoc = null; toast('Could not read ' + name + ': ' + e.message); }
+  }
+
+  const strs = (keys) => ({ type: 'object', additionalProperties: false, required: keys, properties: Object.fromEntries(keys.map((k) => [k, { type: 'string' }])) });
+  const obj = (props) => ({ type: 'object', additionalProperties: false, required: Object.keys(props), properties: props });
+  const S_ = { type: 'string' }, N_ = { type: 'number' }, arr = (items) => ({ type: 'array', items });
+  const SCALARS = ['goal', 'r1', 'r3', 'cycle', 'salesTarget', 'coverage', 'mktShare', 'lyPipe', 'lyMql', 'lySqo', 'lyBudget', 'sdrs', 'sdrCap'];
+  function briefSchema() {
+    return obj({
+      fields: obj(Object.assign({ name: S_, fy: S_, product: S_, brief_summary: S_, start: S_ }, Object.fromEntries(SCALARS.map((k) => [k, N_])))),
+      campaigns: arr(obj({ name: S_, tier: { type: 'string', enum: CAMP_TIERS }, product: S_, theme: S_, offer: S_, audience: S_, start: N_, launch: N_, end: N_, share: N_, programs: S_, owner: { type: 'string', enum: FUNCTIONS } })),
+      products: arr(obj({ name: S_, share: N_, launch: N_ })),
+      segments: arr(obj({ name: S_, share: N_, acv: N_, mqlSqo: N_ })),
+      regions: arr(obj({ name: S_, share: N_, lead: S_ })),
+      personas: arr(strs(['role', 'part', 'cares', 'aware', 'consider', 'decide'])),
+      moments: arr(obj({ month: N_, name: S_, type: { type: 'string', enum: ['Launch', 'Event', 'Season'] } })),
+      channels: arr(obj({ id: { type: 'string', enum: S.channels.map((c) => c.id) }, on: { type: 'boolean' }, share: N_, cpm: N_ })),
+      missing: arr(obj({ step: { type: 'string', enum: SETUP.map((s) => s[0]) }, question: S_ })),
+      assumed: arr(S_),
+      summary: S_
+    });
+  }
+  const AGENT_SYSTEM = 'You are the planning agent inside a demand generation hub. You turn a go-to-market (GTM) brief into the planning assumptions every number in the hub is built from, then tell the planner what is still missing.\n\n' +
+    'Rules:\n- Fill only what the brief states or clearly implies. For a text field the brief does not cover, return an empty string; for a number, return 0; for a list, return an empty array. Empty values keep what the plan already has.\n' +
+    '- A list you return replaces the whole list in the plan, so return every item that belongs in it, including ones already in the current plan that still apply.\n' +
+    '- Percentages are whole numbers (22 means 22%). Money is plain US dollars (50000000, not "$50M"). start is the plan\'s first month as YYYY-MM.\n' +
+    '- Campaign start, launch and end, product launch, and moment month are plan months: 1 is the first month of the plan. Product launch 0 means already in market.\n' +
+    '- Shares in each list (campaigns, products, segments, regions, the channels that are on) should add to 100.\n' +
+    '- campaign.programs is a comma-separated list of channel ids from: ' + S.channels.map((c) => c.id + ' (' + c.name + ')').join(', ') + '.\n' +
+    '- If you fill a number from typical B2B benchmarks rather than the brief, say so in assumed, one short line each.\n' +
+    '- missing: one short, specific question per input the planner still has to give, tied to its setup step, most important first, at most 8. Do not ask about anything already filled. Never invent targets or budgets the brief does not give; ask for them instead.\n' +
+    '- summary: one sentence on what you filled.';
+  function planForAgent() {
+    const pick = (a, ks) => a.map((r) => Object.fromEntries(ks.map((k) => [k, r[k]])));
+    const base = S.isExample ? blank() : S;
+    return Object.assign(Object.fromEntries(['name', 'fy', 'product', 'brief', 'start'].concat(SCALARS).map((k) => [k, base[k]])), {
+      campaigns: pick(base.campaigns, ['name', 'tier', 'product', 'theme', 'offer', 'audience', 'start', 'launch', 'end', 'share', 'programs', 'owner']),
+      products: base.products, segments: base.segments, regions: base.regions, moments: base.moments,
+      personas: pick(base.personas, ['role', 'part', 'cares', 'aware', 'consider', 'decide']),
+      channels: pick(base.channels, ['id', 'name', 'on', 'share', 'cpm']),
+      stillMissing: SETUP.map(([id, , label, check]) => { const g = base === S ? check() : 'everything'; return g ? id + ': ' + g : ''; }).filter(Boolean)
+    });
+  }
+  async function runAgent(answers) {
+    if (!aiKey) return toast('Add your Anthropic API key first');
+    const pasted = ($('in-brief-paste').value || '').trim();
+    if (!answers && !briefDoc && !pasted) return toast('Upload or paste your GTM brief first');
+    const content = [];
+    if (!answers && briefDoc && briefDoc.pdf) content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: briefDoc.pdf } });
+    let ask = '';
+    if (answers) ask = 'The planner answered your questions. Update the plan from these answers and list what is still missing.\n\n' + answers.map((m) => 'Q: ' + m.question + '\nA: ' + m.answer).join('\n\n');
+    else ask = 'Here is the GTM brief' + (briefDoc && briefDoc.pdf ? ' (attached above).' : ':\n\n<brief>\n' + (pasted || briefDoc.text) + '\n</brief>') + '\n\nFill the plan from it.';
+    content.push({ type: 'text', text: 'Current plan:\n' + JSON.stringify(planForAgent()) + '\n\n' + ask });
+    busy = true; renderWizard(); setAgentStatus('Claude is reading ' + (answers ? 'your answers' : 'the brief') + '…');
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': aiKey, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-opus-5-5', max_tokens: 16000, fallbacks: 'default', output_config: { effort: 'medium', format: { type: 'json_schema', schema: briefSchema() } }, system: AGENT_SYSTEM, messages: [{ role: 'user', content }] })
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error((j.error && j.error.message) || 'Request failed');
+      if (j.stop_reason === 'refusal') throw new Error('Claude declined to read this brief');
+      if (j.stop_reason === 'max_tokens') throw new Error('the brief was too long to finish in one pass');
+      const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
+      applyBrief(JSON.parse(text), answers);
+      setAgentStatus('');
+      toast(answers ? 'Plan updated from your answers' : 'Plan filled from the brief');
+    } catch (e) { setAgentStatus('Claude could not finish: ' + e.message); }
+    busy = false; renderWizard();
+  }
+  function setAgentStatus(t) { const el = $('brief-status'); if (el) { el.textContent = t; el.hidden = !t; } }
+
+  // write what Claude returned into the plan; empty values keep what is there
+  function applyBrief(d, answers) {
+    const keep = S.setup || {};
+    if (S.isExample) S = blank();
+    S.isExample = false;
+    const f = d.fields || {}, t = (v) => String(v == null ? '' : v).trim();
+    ['name', 'fy', 'product'].forEach((k) => { if (t(f[k])) S[k] = t(f[k]); });
+    if (t(f.brief_summary)) S.brief = t(f.brief_summary);
+    if (/^\d{4}-\d{2}$/.test(t(f.start))) S.start = t(f.start);
+    SCALARS.forEach((k) => { if (num(f[k]) > 0) S[k] = num(f[k]); });
+    const list = (a, make) => (Array.isArray(a) && a.length ? a.map(make) : null);
+    const m = (v, d0) => Math.max(0, Math.round(num(v))) || d0;
+    const camps = list(d.campaigns, (c) => ({ name: t(c.name), tier: CAMP_TIERS.includes(c.tier) ? c.tier : 'Tier 2 launch', status: 'Planning', theme: t(c.theme), offer: t(c.offer), audience: t(c.audience), product: t(c.product),
+      start: m(c.start, 1), launch: m(c.launch, m(c.start, 1)), end: m(c.end, 12), share: num(c.share), programs: t(c.programs), owner: FUNCTIONS.includes(c.owner) ? c.owner : 'Demand gen' }));
+    if (camps) S.campaigns = camps;
+    const prods = list(d.products, (p) => ({ name: t(p.name), share: num(p.share), launch: Math.max(0, Math.round(num(p.launch))) })); if (prods) S.products = prods;
+    const segs = list(d.segments, (s) => ({ name: t(s.name), share: num(s.share), acv: num(s.acv) || 50000, mqlSqo: num(s.mqlSqo) || 20 })); if (segs) S.segments = segs;
+    const regs = list(d.regions, (r) => ({ name: t(r.name), share: num(r.share), lead: t(r.lead) })); if (regs) S.regions = regs;
+    const pers = list(d.personas, (p) => ({ role: t(p.role), part: t(p.part), cares: t(p.cares), aware: t(p.aware), consider: t(p.consider), decide: t(p.decide) })); if (pers) S.personas = pers;
+    const moms = list(d.moments, (x) => ({ month: m(x.month, 1), name: t(x.name), type: ['Launch', 'Event', 'Season'].includes(x.type) ? x.type : 'Launch' })); if (moms) S.moments = moms;
+    (d.channels || []).forEach((x) => { const c = S.channels.find((y) => y.id === x.id); if (!c) return; c.on = !!x.on; if (num(x.share) > 0 || !x.on) c.share = x.on ? num(x.share) : 0; if (num(x.cpm) > 0) c.cpm = num(x.cpm); });
+    const answered = answers ? (keep.missing || []).map((q) => (q.answer ? Object.assign({}, q, { done: true }) : q)).filter((q) => q.done) : [];
+    S.setup = {
+      file: answers ? keep.file : (briefDoc ? briefDoc.name : 'pasted brief'), at: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      summary: t(d.summary), assumed: (answers ? (keep.assumed || []) : []).concat((d.assumed || []).map(t).filter(Boolean)).slice(-12),
+      missing: answered.concat((d.missing || []).filter((q) => q && t(q.question)).map((q) => ({ step: q.step, question: t(q.question), answer: '' })))
+    };
+    $('example-pill').hidden = true;
+    save(); bindInputs(); render();
+  }
+
   function changed(rebind) {
     if (S.isExample) { S.isExample = false; }
     $('example-pill').hidden = !S.isExample;
@@ -751,7 +916,7 @@
   }
   const go = (k, l) => '<button type="button" class="linkbtn" data-go="' + k + '">' + l + '</button>';
   const GUIDES = {
-    onepage: ['Start with the hero number and whether it covers what sales needs.', 'The campaigns table shows which of the four campaigns carry the number and when each launches. Open ' + go('campaigns', 'Campaigns') + ' for the full plan behind each one.', 'Anything flagged under "Needs attention" links to the tab that explains it.'],
+    onepage: ['Start with the hero number and whether it covers what sales needs.', 'The campaigns table shows which campaigns carry the number and when each launches. Open ' + go('campaigns', 'Campaigns') + ' for the full plan behind each one.', 'Anything flagged under "Needs attention" links to the tab that explains it.', 'Building your own plan? Open ' + '<button type="button" class="linkbtn" data-open-card="setup">Start here: GTM brief</button>' + ' to upload your brief. Claude fills the plan and tells you what is still missing.'],
     campaigns: ['Each card is one campaign: its theme, hero offer, audience, and the share of pipeline it owns.', 'Open a campaign to see the programs that carry it and the milestones worked back from launch.', 'Click any month on a timeline to see what lands that month and why it is flagged.'],
     funnel: ['Each segment works the number backwards: pipeline, then SQOs, MQLs and leads.', 'Tap Enterprise or Commercial to see the campaigns and program buys that make up its number, and how the math is built.'],
     channels: ['Every program a campaign runs on, with its MQLs, cost per MQL, budget and pipeline.', 'Check who runs each one (HQ, shared or region) and who owns it.'],
@@ -788,6 +953,7 @@
       if (a && card.contains(a) && document.activeElement !== a) { a.focus({ preventScroll: true }); if (sel) try { a.setSelectionRange(sel[0], sel[1]); } catch (e) { /* not a text field */ } }
     }
     if (tab === 'owners') bindRaci();
+    renderWizard();
   }
 
   const VIEWS = {
@@ -1321,7 +1487,7 @@
       const asks = S.asks.slice(0, 4).map((a) => '<li><b>' + esc(a.ask) + '</b> <span class="note">· ' + esc(a.who) + (num(a.by) ? ' · by ' + (P.labels[Math.round(num(a.by)) - 1] || '') : '') + '</span></li>').join('');
       const risks = P.risks.filter((r) => r.status !== 'On track').map((r) => '<li>' + riskPill(r.status) + ' ' + esc(r.risk) + '</li>').join('');
       const s80 = P.scen[0], s120 = P.scen[2];
-      return '<div class="op-head"><div><h2>' + esc(S.name || 'Untitled plan') + '</h2><p class="lead">' + esc(S.fy) + ' plan on a page' + (S.product ? ' · ' + esc(S.product) : '') + '</p></div></div>' +
+      return '<div class="op-head"><div><h2>' + esc(S.name || 'Untitled plan') + '</h2><p class="lead">' + esc(S.fy) + ' plan on a page' + (S.product ? ' · ' + esc(S.product) : '') + '</p></div></div>' + (S.isExample || !setupState().some((x) => x.gap) ? '' : '<div class="box wz-op"><h3>Finish setting up the plan</h3>' + wizardHtml(true) + '</div>') +
         '<div class="tiles">' +
         '<div class="tile hero"><span>Sourced pipeline</span><b>' + money(t.pipe) + '</b><span>' + (vsLy(t.pipe, B.ly.pipe) || 'set last year to compare') + '</span></div>' +
         '<div class="tile' + (B.covGap > 0.5 ? ' alert' : '') + '"><span>Covers sales need</span><b>' + (B.mktNeed ? coverCell(t.pipe / B.mktNeed) : '–') + '</b><span>' + (B.mktNeed ? 'of ' + money(B.mktNeed) + ' marketing owes' : 'set the sales target') + '</span></div>' +
@@ -1689,7 +1855,20 @@
       a.href = URL.createObjectURL(new Blob([templateCsv()], { type: 'text/csv' }));
       a.download = slug(rpSel || 'region') + '-plan-template.csv'; document.body.appendChild(a); a.click(); a.remove();
     };
-    $('in-ai-key').oninput = (e) => { aiKey = e.target.value.trim(); render(); };
+    ['in-ai-key', 'in-ai-key-brief'].forEach((id) => { $(id).oninput = (e) => { aiKey = e.target.value.trim(); ['in-ai-key', 'in-ai-key-brief'].forEach((o) => { if (o !== id) $(o).value = e.target.value; }); render(); }; });
+    $('in-brief-file').onchange = (e) => readBrief(e.target.files[0]);
+    $('btn-fill-brief').onclick = () => runAgent(null);
+    $('in-brief-paste').oninput = () => { if (briefDoc) { briefDoc = null; $('in-brief-file').value = ''; $('brief-file-name').textContent = 'Using the pasted text.'; } };
+    $('btn-brief-sample').onclick = () => fetch('samples/gtm-brief.md').then((r) => { if (!r.ok) throw new Error(); return r.text(); })
+      .then((t) => { briefDoc = null; $('in-brief-paste').value = t; $('brief-file-name').textContent = 'Sample brief pasted below.'; toast('Sample brief added'); })
+      .catch(() => toast('The sample brief only loads from the live site'));
+    document.addEventListener('input', (e) => { const i = e.target.dataset && e.target.dataset.wzQ; if (i == null || !S.setup) return; S.setup.missing[+i].answer = e.target.value; save(); });
+    document.addEventListener('click', (e) => {
+      if (e.target.id !== 'btn-wz-send') return;
+      const a = ((S.setup || {}).missing || []).filter((m) => !m.done && (m.answer || '').trim());
+      if (!a.length) return toast('Answer at least one question first');
+      runAgent(a);
+    });
     $('panel').addEventListener('click', (e) => { const b = e.target.closest('button[data-ai]'); if (b) askClaude(b.dataset.ai); });
     $('btn-rp-copy').onclick = () => { if (rpSel) copyText(planBlock(rpSel), rpSel + ' plan copied. Send it to HQ'); };
     $('btn-rp-import').onclick = () => { const v = $('in-rp-paste').value.trim(); if (v) importPlan(v); else toast('Paste a plan first'); };
@@ -1714,7 +1893,7 @@
     $('cheer-t').textContent = CHEERS[cheerI];
     $('cheer-new').onclick = newCheer; $('spider').onclick = newCheer;
     document.addEventListener('click', (e) => { const b = e.target.closest('[data-goexec]'); if (!b) return; tab = b.dataset.goexec; renderTabs(); render(); if (window.innerWidth < 900 && $('btn-close-rail')) $('btn-close-rail').click(); $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-    $('panel').addEventListener('click', (e) => {
+    document.addEventListener('click', (e) => {
       const b = e.target.closest('[data-open-card]'); if (!b) return;
       const card = document.querySelector('.rail [data-card="' + b.dataset.openCard + '"]'); if (!card) return;
       if (!editing) setEditing(true);

@@ -375,3 +375,22 @@ details.more[open]>summary{margin-bottom:8px}
 .tabhead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:0 8px;border-bottom:1px solid var(--line)}
 .tabhead>.tabs{border-bottom:none;flex:1 1 420px;min-width:0;padding-bottom:10px}
 .tabhead>.toolbar{padding:8px 16px 10px;margin-left:auto}
+/* GTM brief agent + setup wizard */
+.wz{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
+.wz-head{display:flex;flex-direction:column;gap:6px}
+.wz-head b{font-size:13px}
+.wz-bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.wz-bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.wz-next{display:flex;flex-direction:column;gap:4px;align-items:flex-start;border:1px solid var(--accent);background:var(--accent-soft);border-radius:var(--r);padding:10px 12px}
+.wz-next.ok{border-color:var(--line);background:none}
+.wz-next .wz-k{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.wz-next .btn{margin-top:4px}
+.wz-list{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.wz-list li span{display:block;color:var(--muted);font-size:12px}
+.wz-list li.ok{color:var(--muted)}
+.wz-list li.ok::marker{content:"✓  ";color:var(--accent)}
+.wz-qs{display:flex;flex-direction:column;gap:8px}
+.wz-as{margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--muted)}
+.wz-op{display:flex;flex-direction:column;gap:10px}
+.wz-op .wz-head{max-width:420px}
+#brief-status{color:var(--accent)}
