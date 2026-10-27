@@ -31,8 +31,11 @@
       <div class="rail-head"><h3>Planning assumptions</h3><button class="btn" type="button" id="btn-close-rail">Done</button></div>
       <div class="rail-intro"><b>Planning assumptions</b><span>Set these once when you build the plan: the goal, funnel, audience, programs and regions. Every number in the hub is built from them.</span></div>
       <details class="card setup" data-card="setup" open>
-        <summary><h3>Start here: GTM brief</h3><small>AI fills the plan, then shows what's missing</small></summary>
+        <summary><h3>Start here</h3><small>what's ready · what's missing</small></summary>
         <div class="body">
+          <p class="hint">Work down the sections below in order. Each one shows <span class="cstat ok">ready</span> or <span class="cstat gap">needs input</span> in its header, and <span class="cstat opt">optional</span> ones can wait.</p>
+          <div class="wz" id="setup-wizard"></div>
+          <details class="sub brief-box" id="brief-box" open><summary>Have a GTM brief? Let AI fill the plan for you</summary>
           <label class="f">Upload your GTM brief<input id="in-brief-file" type="file" accept=".pdf,.docx,.txt,.md"></label>
           <p class="hint"><span id="brief-file-name">PDF, Word (.docx), text or Markdown.</span> <button class="linkbtn" type="button" id="btn-brief-sample">Try a sample brief</button></p>
           <label class="f">Or paste it<textarea id="in-brief-paste" rows="3" placeholder="Paste the brief text"></textarea></label>
@@ -45,12 +48,12 @@
           <p class="hint" id="brief-key-hint">A free Gemini key works: get one at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. On the free tier, Google can use what you send to improve its products, so use a sample or non-confidential brief. The key stays in this browser tab and is never saved. Without a key, the checklist below still shows what each section needs.</p>
           <div class="btns"><button class="btn primary" id="btn-fill-brief" type="button">Fill the plan from this brief</button></div>
           <p class="note" id="brief-status" hidden></p>
-          <div class="wz" id="setup-wizard"></div>
+          </details>
         </div>
       </details>
 
       <div class="rail-group">Strategy</div>
-      <details class="card" data-card="campaign-and-brief" open>
+      <details class="card" data-card="campaign-and-brief">
         <summary><h3>Campaign &amp; brief</h3><small>what we're launching</small></summary>
         <div class="body">
           <div class="row">
@@ -73,7 +76,7 @@
       </details>
 
       <div class="rail-group">Targets</div>
-      <details class="card" data-card="pipeline-goal-and-funnel" open>
+      <details class="card" data-card="pipeline-goal-and-funnel">
         <summary><h3>Pipeline goal &amp; funnel</h3><small>work back from the number</small></summary>
         <div class="body">
           <div class="row">
@@ -134,17 +137,17 @@
       </details>
 
       <details class="card" data-card="offers-and-assets">
-        <summary><h3>Offers &amp; assets</h3><small>status · owner · localization</small></summary>
+        <summary><h3>Offers &amp; assets</h3><span class="cstat opt">optional</span><small>status · owner · localization</small></summary>
         <div class="body"><div id="ed-assets"></div><p class="hint">One row per asset. Due month is the plan month it has to be live. List the regions that need it localized, separated by commas.</p></div>
       </details>
 
       <details class="card" data-card="abm-tiers">
-        <summary><h3>ABM tiers</h3><small>accounts · play</small></summary>
+        <summary><h3>ABM tiers</h3><span class="cstat opt">optional</span><small>accounts · play</small></summary>
         <div class="body"><div id="ed-tiers"></div></div>
       </details>
 
       <details class="card" data-card="abm-by-region">
-        <summary><h3>ABM by region</h3><small>accounts · owner · next play</small></summary>
+        <summary><h3>ABM by region</h3><span class="cstat opt">optional</span><small>accounts · owner · next play</small></summary>
         <div class="body"><div id="ed-abm"></div><p class="hint">Each region's share of the tier accounts, who owns them, and the next play.</p></div>
       </details>
 
@@ -160,7 +163,7 @@
       </details>
 
       <div class="rail-group">Regions</div>
-      <details class="card" data-card="regional-plans" open>
+      <details class="card" data-card="regional-plans">
         <summary><h3>Regional plans</h3><small>each regional lead fills in theirs</small></summary>
         <div class="body">
           <div class="row">
@@ -175,7 +178,7 @@
           <label class="f">What we're adapting locally<textarea id="in-rp-adapt" rows="3"></textarea></label>
           <details class="sub">
             <summary>AI digest (optional)</summary>
-            <p class="hint">Uses the AI chosen under Start here: GTM brief.</p>
+            <p class="hint">Uses the AI chosen under Start here.</p>
             <label class="f">Gemini or Anthropic API key<input id="in-ai-key" type="password" autocomplete="off" placeholder="AIza... or sk-ant-..."></label>
             <p class="hint" id="rg-ai-hint">Every region gets a built-in digest. Add a Gemini or Anthropic key to also get an AI-written digest on each region. The key stays in this browser tab and is never saved.</p>
           </details>
