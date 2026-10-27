@@ -11,9 +11,9 @@ It's a static site with no build step.
 - **Locally:** open `index.html` in a browser.
 - **GitHub Pages:** go to *Settings → Pages*, set *Source* to "Deploy from a branch", then choose `main` and `/ (root)`. The site will be served at `https://<user>.github.io/<repo>/`.
 
-## Inputs (left rail)
+## Planning assumptions (left pane)
 
-Grouped as Strategy, Targets, Audience, Programs, Regions and Execution.
+Set once when you build the plan, grouped as Strategy, Targets, Audience, Programs and Regions. Weekly updates (actuals, risks, team and SLAs, asks of leadership) live in the Execution tab, each next to the view it drives.
 
 - **Campaign & brief:** campaign name, fiscal year, products in scope and brief notes.
 - **Campaigns:** each campaign's tier (Tier 1 launch, Tier 2 launch, always-on, seasonal), status, theme, hero offer, audience, product, start, launch and end months, share of pipeline, programs and owner.
