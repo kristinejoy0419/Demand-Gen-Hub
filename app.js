@@ -1073,6 +1073,7 @@
     calendar: ['channels-and-programs', 'launch-moments', 'campaigns'],
     regions: ['regions', 'regional-plans', 'channels-and-programs'],
     committee: ['buying-committee', 'offers-and-assets', 'abm-tiers', 'abm-by-region', 'regions'],
+    actions: ['campaigns', 'offers-and-assets', 'launch-moments'],
     pacing: ['pipeline-goal-and-funnel'],
     owners: ['channels-and-programs', 'campaigns', 'offers-and-assets'],
     paid: ['channels-and-programs', 'campaign-and-brief', 'segments'],
@@ -1084,7 +1085,7 @@
   function feedsStrip() {
     const cards = (FEEDS[tab] || []).map((k) => { const c = document.querySelector('.rail [data-card="' + k + '"] h3'); return c ? '<button type="button" class="feed" data-open-card="' + k + '">' + esc(c.textContent) + '</button>' : ''; }).join('');
     const wk = UPD[tab] ? '<span class="feedsep">Weekly update</span><span class="feed wk">' + UPD_LABEL[UPD[tab]] + ' · below</span>' : '';
-    return '<div class="feeds"><span class="feedlab">Built from</span>' + cards + wk + '</div>';
+    return cards || wk ? '<div class="feeds"><span class="feedlab">Built from</span>' + cards + wk + '</div>' : '';
   }
   // reading by default: the planning assumptions stay out of the way until someone wants to edit
   let editing = false;
