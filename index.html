@@ -195,6 +195,8 @@
       <div class="rail-note"><b>Weekly updates don't go here.</b> Actuals, risk status, team load and asks live in the <button class="linkbtn" type="button" data-goexec="pacing">Execution tab</button>, each next to what it drives.</div>
 
       <div class="btns">
+        <button class="btn" id="btn-plan-save" type="button">Save plan file</button>
+        <button class="btn" id="btn-plan-open" type="button">Open plan file</button><input id="in-plan-file" type="file" accept=".json,application/json" hidden>
         <button class="btn" id="btn-reset" type="button">Reload example</button>
         <button class="btn" id="btn-blank" type="button">Start blank</button>
       </div>
@@ -229,7 +231,7 @@
       </details>
       <details class="card upd" id="upd-actuals">
         <summary><h3><span class="updtag">Weekly update</span>Actuals</h3><small>enter each month as it closes</small></summary>
-        <div class="body"><div id="ed-actuals"></div><p class="hint">Enter each closed month from the CRM. Pacing compares them to plan and forecasts the year.</p></div>
+        <div class="body"><label class="f">Import a CRM export (CSV or Excel)<input id="in-actuals-file" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls"></label><p class="hint">Needs a month or date column, plus any of MQLs, SQOs, pipeline and spend. One row per month, or one row per deal summed by month. <a href="samples/actuals-template.csv" download>Download a template</a>.</p><div id="ed-actuals"></div><p class="hint">Or enter each closed month by hand. Pacing compares them to plan and forecasts the year.</p></div>
       </details>
       <details class="card upd" id="upd-team">
         <summary><h3><span class="updtag">Weekly update</span>Team &amp; SLAs</h3><small>capacity · SLA · escalation</small></summary>
