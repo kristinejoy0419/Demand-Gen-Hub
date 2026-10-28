@@ -14,13 +14,13 @@
   const LOCAL = 'Local only';
   const isIn = (st) => st === 'Submitted' || st === 'Approved';
   const RISK_LINKS = ['Owner sets it', 'Regional coverage', 'SDR capacity', 'MQL → SQO', 'Pacing'];
-  const FUNCTIONS = ['Demand gen', 'PMM', 'Field', 'Partner', 'Paid (shared svc)', 'Creative', 'RevOps', 'Sales / SDR'];
+  const FUNCTIONS = ['Demand gen', 'PMM', 'Field', 'Partner', 'Paid', 'Creative', 'RevOps', 'Sales / SDR'];
 
   /* ---------- example ---------- */
   function example() {
     return {
       isExample: true,
-      done: { 'ask|Approve $6.6M program budget, with 10% held back until the Q1 pacing review': true, 'ask|SLA with paid shared services: flights live 10 business days after brief, weekly pacing': true,
+      done: { 'ask|Approve $6.6M program budget, with 10% held back until the Q1 pacing review': true, 'ask|SLA with paid media: flights live 10 business days after brief, weekly pacing': true,
         'ask|Agree sourced vs influenced definitions and the PQL handoff': true, 'ms|Admin & governance add-on|Campaign brief': true },
       name: 'FY27 IT buyer expansion',
       fy: 'FY27',
@@ -45,7 +45,7 @@
       ],
       team: [
         { fn: 'Demand gen', hc: 6, cap: 8, sla: 'Campaign brief to every team 12 weeks before launch', intake: 'Campaign brief + weekly campaign stand-up', escal: 'Head of Campaigns' },
-        { fn: 'Paid (shared svc)', hc: 3, cap: 5, sla: 'Flight live 10 business days after brief; pacing report every Monday', intake: 'Paid brief tab into the shared-services intake form', escal: 'Head of shared services, then chief of staff' },
+        { fn: 'Paid', hc: 3, cap: 5, sla: 'Flight live 10 business days after brief; pacing report every Monday', intake: 'Paid brief tab into the paid media intake form', escal: 'Head of paid media, then chief of staff' },
         { fn: 'Creative', hc: 2, cap: 4, sla: 'First round in 5 business days, two revision rounds', intake: 'Creative request with the campaign brief attached', escal: 'Creative director' },
         { fn: 'PMM', hc: 4, cap: 6, sla: 'Messaging locked 8 weeks before launch', intake: 'Launch tiering review', escal: 'Head of PMM' },
         { fn: 'Field', hc: 5, cap: 6, sla: 'Event plans submitted a quarter ahead', intake: 'Regional plan upload', escal: 'Regional VPs' },
@@ -54,7 +54,7 @@
       ],
       asks: [
         { ask: 'Approve $6.6M program budget, with 10% held back until the Q1 pacing review', who: 'CMO + Finance', by: 1, why: 'Funds the plan while keeping room to move money to what converts' },
-        { ask: 'SLA with paid shared services: flights live 10 business days after brief, weekly pacing', who: 'Head of shared services', by: 1, why: 'Paid carries 20% of sourced pipeline but sits outside the team' },
+        { ask: 'SLA with paid media: flights live 10 business days after brief, weekly pacing', who: 'Head of paid media', by: 1, why: 'Paid carries 20% of sourced pipeline, so launch dates depend on its timing' },
         { ask: '2 more SDRs, or overflow routing, for launch months', who: 'Head of sales development', by: 2, why: 'MQLs exceed SDR capacity in Mar and Jun' },
         { ask: 'Decide who covers LATAM: HQ programs or a partner', who: 'CRO', by: 3, why: 'LATAM has no plan, owner or ABM play' },
         { ask: 'Agree sourced vs influenced definitions and the PQL handoff', who: 'RevOps + Product', by: 1, why: 'Expansion pipeline depends on product signals reaching sales' }
@@ -112,7 +112,7 @@
         { id: 'content', on: true, name: 'Content & offers', owner: 'PMM', kind: 'Owned', stage: 'Aware', motion: 'Both', runBy: 'HQ', share: 8, cpm: 750 },
         { id: 'seo', on: true, name: 'SEO (organic search)', owner: 'Demand gen', kind: 'Earned', stage: 'Aware', motion: 'Always-on', runBy: 'HQ', share: 5, cpm: 450 },
         { id: 'aeo', on: true, name: 'AEO / GEO (AI answer engines)', owner: 'PMM', kind: 'Earned', stage: 'Aware', motion: 'Always-on', runBy: 'HQ', share: 3, cpm: 650 },
-        { id: 'paid', on: true, name: 'Paid media', owner: 'Paid (shared svc)', kind: 'Paid', stage: 'Aware', motion: 'Both', runBy: 'Both', share: 20, cpm: 2200 },
+        { id: 'paid', on: true, name: 'Paid media', owner: 'Paid', kind: 'Paid', stage: 'Aware', motion: 'Both', runBy: 'Both', share: 20, cpm: 2200 },
         { id: 'partner', on: true, name: 'Partner marketing', owner: 'Partner', kind: 'Partner', stage: 'Consider', motion: 'Both', runBy: 'Region', share: 8, cpm: 1650 },
         { id: 'sdr', on: true, name: 'SDR outbound & sales plays', owner: 'Sales / SDR', kind: 'Sales', stage: 'Decide', motion: 'Always-on', runBy: 'Region', share: 12, cpm: 2800 },
         { id: 'product', on: true, name: 'In-product signals (PQL)', owner: 'Demand gen', kind: 'Product', stage: 'Consider', motion: 'Always-on', runBy: 'HQ', share: 6, cpm: 185 }
@@ -202,7 +202,7 @@
   let S = fill(load() || example());
   let rpSel = null; // region shown in the regional plan input
   let tab = 'onepage';
-  function load() { try { const v = localStorage.getItem(STORE_KEY); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+  function load() { try { const v = localStorage.getItem(STORE_KEY); return v ? JSON.parse(v.split('Paid (shared svc)').join('Paid')) : null; } catch (e) { return null; } }
   function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } }
 
   /* ---------- helpers ---------- */
@@ -740,7 +740,7 @@
     const t = (a.ask + ' ' + a.why).toLowerCase(), hs = health(P).map((h) => h[1]);
     const find = (re) => hs.find((h) => re.test(h)) || '';
     if (/sdr|sales dev|overflow|routing|headcount/.test(t)) return { tab: 'onepage', path: 'Overview → Plan on a page → What needs attention', fact: find(/sdr/i) || 'MQL volume in launch months is above what the SDR team can work.' };
-    if (/paid|shared serv|flight|media/.test(t)) { const pd = P.channels.find((c) => c.id === 'paid'); return { tab: 'owners', path: 'More → Team & owners (SLAs), with the handoff on More → Paid brief', fact: pd ? 'Paid carries ' + pct(pd.w * 100) + ' of sourced pipeline (' + money(pd.pipe) + ') but sits outside the team.' : '' }; }
+    if (/paid|shared serv|flight|media/.test(t)) { const pd = P.channels.find((c) => c.id === 'paid'); return { tab: 'owners', path: 'More → Team & owners (SLAs), with the handoff on More → Paid brief', fact: pd ? 'Paid carries ' + pct(pd.w * 100) + ' of sourced pipeline (' + money(pd.pipe) + '), so launch dates depend on its timing.' : '' }; }
     if (/latam|emea|apj|region|cover/.test(t)) return { tab: 'regions', path: 'Regions → Regional plans', fact: find(/region/i) };
     if (/definition|sourced|influenced|pql|handoff|attribution/.test(t)) return { tab: 'measure', path: 'More → Measurement', fact: 'Expansion pipeline depends on product signals reaching sales, and on one agreed definition of sourced pipeline.' };
     if (/budget|fund|\$|spend/.test(t)) return { tab: 'scenarios', path: 'Execution → Scenarios & asks → Budget scenarios', fact: 'The ' + money(P.budget) + ' program budget delivers ' + money(P.tot.pipe) + ' sourced pipeline (' + (P.budget ? (P.tot.pipe / P.budget).toFixed(1) : '–') + 'x pipeline to spend). The budget scenarios show what each cut costs.' };
@@ -1111,7 +1111,7 @@
     summary: ['The whole plan as one reverse funnel, from the pipeline target down to leads.', 'MQLs by month shows always-on programs running flat and campaign bursts stacking on launches.'],
     calendar: ['MQLs each program delivers by month, across all campaigns.', 'Look for months where bursts stack up, since that is where SDR capacity gets tight.'],
     owners: ['Who owns each campaign and program, and who decides.', 'Click a RACI cell to change it.'],
-    paid: ['The brief the campaigns team hands to the paid media shared service.', 'It carries each campaign\'s audience, offer, budget and MQL target so paid can build the media plan.'],
+    paid: ['The brief the campaigns team hands to paid media.', 'It carries each campaign\'s audience, offer, budget and MQL target so paid can build the media plan.'],
     measure: ['How every campaign is measured: pipeline first, efficiency second.', 'These are the definitions to agree with RevOps before the year starts.'],
     checks: ['Re-adds every total a second way to prove the campaign, channel and region numbers tie out.', 'Anything flagged here is an input worth a second look.']
   };
@@ -1277,8 +1277,8 @@
         ['Pipe : spend', money(c.pipe) + ' ÷ ' + money(c.cost), c.cost ? (c.pipe / c.cost).toFixed(1) + 'x' : '–'],
         ['Timing', c.motion === 'Always-on' ? 'Spread evenly across the year' : c.motion === 'Burst' ? 'Concentrated in launch, event and season months' : '60% spread evenly, 40% in launch, event and season months', '']
       ], 'Change share, cost per MQL, motion and who runs it under Channels & programs.')).join('');
-      const paid = P.channels.find((c) => c.owner === 'Paid (shared svc)');
-      const paidShare = P.channels.filter((c) => c.owner === 'Paid (shared svc)').reduce((s, c) => s + c.w, 0);
+      const paid = P.channels.find((c) => c.owner === 'Paid');
+      const paidShare = P.channels.filter((c) => c.owner === 'Paid').reduce((s, c) => s + c.w, 0);
       return '<div><h2>Channel mix</h2><p class="lead">Every program ladders up to one pipeline number. Paid media is ' + pct(paidShare * 100) + ' of sourced pipeline' + (paid ? '; the rest comes from owned, earned, partner, sales and product programs.' : '.') + ' Tap a program to see how its numbers are built.</p></div>' +
         '<div class="out"><table class="t" data-export><thead><tr><th>Program</th><th>Owner</th><th>Stage</th><th>Motion</th><th class="n">Share</th><th></th><th class="n">Pipeline</th><th class="n">MQLs</th><th class="n">SQOs</th><th class="n">Budget</th><th class="n">Pipe : spend</th></tr></thead><tbody>' + rows +
         '</tbody><tfoot><tr><td>Total</td><td></td><td></td><td></td><td class="n">100%</td><td></td><td class="n">' + money(P.tot.pipe) + '</td><td class="n">' + fmtInt(P.tot.mql) + '</td><td class="n">' + fmtInt(P.tot.sqo) + '</td><td class="n">' + money(P.budget) + '</td><td class="n">' + (P.budget ? (P.tot.pipe / P.budget).toFixed(1) + 'x' : '–') + '</td></tr></tfoot></table></div>';
@@ -1361,7 +1361,7 @@
         '<div class="out"><table class="t raci" data-export><thead><tr><th>Workstream</th>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
     },
     paid(P) {
-      return '<div><h2>Paid brief</h2><p class="lead">Paid media runs as a shared service, so the campaigns team hands it a brief. Paste this into the <a href="https://kristinejoy0419.github.io/paid-media-hub/" target="_blank" rel="noopener">Paid Media Hub</a> to build the media plan, BOM and trafficking.</p></div>' +
+      return '<div><h2>Paid brief</h2><p class="lead">The campaigns team hands paid media a brief. Paste this into the <a href="https://kristinejoy0419.github.io/paid-media-hub/" target="_blank" rel="noopener">Paid Media Hub</a> to build the media plan, BOM and trafficking.</p></div>' +
         '<div class="btns"><button class="btn primary" type="button" id="btn-brief">Copy brief</button></div><div class="brief" id="brief-text">' + esc(paidBrief(P)) + '</div>';
     },
     measure(P) {
@@ -1433,7 +1433,7 @@
       ['Campaign brief', t.brief, 'Demand gen', 'Brief'], ['Messaging locked', t.msg, 'PMM', 'Messaging'], ['Creative & assets', t.creative, 'Creative', 'Creative'],
       ['Sales enablement', t.enable, 'PMM + Sales', 'Enablement'], ['Launch', 0, c.owner || 'Demand gen', 'Launch'], ['Retro & reset', t.retro, 'Demand gen + RevOps', 'Retro']
     ];
-    if (chFor(c.programs).some((x) => x.id === 'paid')) ms.splice(3, 0, ['Paid flight brief', t.paid, 'Paid (shared svc)', 'Paid brief']);
+    if (chFor(c.programs).some((x) => x.id === 'paid')) ms.splice(3, 0, ['Paid flight brief', t.paid, 'Paid', 'Paid brief']);
     return ms;
   }
   function milestones(c) {
@@ -1863,7 +1863,7 @@
   };
   function teamBox(P) {
     const rows = P.team.map((t) => '<tr' + (t.over ? ' class="flagrow"' : '') + '><td><b>' + esc(t.fn) + '</b></td><td class="n">' + fmtInt(num(t.hc)) + '</td><td class="n">' + fmtInt(t.load) + ' / ' + fmtInt(num(t.cap)) + (t.over ? ' <span class="pill burst">Over</span>' : '') + '</td><td>' + esc(t.sla) + '</td><td>' + esc(t.intake) + '</td><td>' + esc(t.escal) + '</td></tr>').join('');
-    return '<h3>Team capacity &amp; SLAs</h3><p class="note">Load counts the programs, unfinished assets and campaigns each team carries at once, against what it can run. Teams outside demand gen, like paid shared services, get an SLA and an escalation path, not just a brief.</p>' +
+    return '<h3>Team capacity &amp; SLAs</h3><p class="note">Load counts the programs, unfinished assets and campaigns each team carries at once, against what it can run. Every partner team gets an SLA and an escalation path, not just a brief.</p>' +
       '<div class="out"><table class="t" data-export><thead><tr><th>Team</th><th class="n">People</th><th class="n">Load / capacity</th><th>SLA</th><th>How to engage</th><th>Escalation</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
   function motionBox(P) {
@@ -1928,8 +1928,8 @@
     out.push([sub === P.regions.length && cov >= 0.95 ? 'ok' : 'fix', sub + ' of ' + P.regions.length + ' regions submitted (' + appr + ' approved) · regional coverage ' + coverCell(cov)]);
     const lateFrom = Math.max(1, 12 - Math.round(num(S.cycle) / 30));
     if (lateFrom < 12) out.push(['watch', 'Pipeline sourced after month ' + lateFrom + ' (' + P.labels[lateFrom - 1] + ') mostly closes next fiscal year']);
-    const paid = P.channels.filter((c) => c.owner === 'Paid (shared svc)').reduce((s, c) => s + c.w, 0);
-    out.push([paid > 0.35 ? 'watch' : 'ok', 'Paid is ' + pct(paid * 100) + ' of the mix' + (paid > 0.35 ? ', so the plan leans on a team you don\'t run' : '')]);
+    const paid = P.channels.filter((c) => c.owner === 'Paid').reduce((s, c) => s + c.w, 0);
+    out.push([paid > 0.35 ? 'watch' : 'ok', 'Paid is ' + pct(paid * 100) + ' of the mix' + (paid > 0.35 ? ', so the plan leans heavily on one channel' : '')]);
     const r = P.budget ? P.tot.pipe / P.budget : 0;
     out.push([r === 0 ? 'watch' : r < 3 ? 'fix' : r < 5 ? 'watch' : 'ok', r ? 'Pipeline to spend ' + r.toFixed(1) + 'x' : 'Set cost per MQL to see pipeline to spend']);
     const miss = S.assets.filter((x) => x.status === 'Missing').length;
@@ -1991,10 +1991,10 @@
   }
   function raciDefault(w, f) {
     const fixed = {
-      strategy: { 'Demand gen': 'R', PMM: 'C', Field: 'C', Partner: 'C', 'Paid (shared svc)': 'C', Creative: 'I', RevOps: 'C', 'Sales / SDR': 'C' },
-      message: { 'Demand gen': 'C', PMM: 'R', Field: 'I', Partner: 'I', 'Paid (shared svc)': 'I', Creative: 'C', RevOps: 'I', 'Sales / SDR': 'C' },
-      abm: { 'Demand gen': 'R', PMM: 'I', Field: 'C', Partner: 'I', 'Paid (shared svc)': 'C', Creative: 'I', RevOps: 'C', 'Sales / SDR': 'C' },
-      measure: { 'Demand gen': 'C', PMM: 'I', Field: 'I', Partner: 'I', 'Paid (shared svc)': 'I', Creative: 'I', RevOps: 'R', 'Sales / SDR': 'C' }
+      strategy: { 'Demand gen': 'R', PMM: 'C', Field: 'C', Partner: 'C', 'Paid': 'C', Creative: 'I', RevOps: 'C', 'Sales / SDR': 'C' },
+      message: { 'Demand gen': 'C', PMM: 'R', Field: 'I', Partner: 'I', 'Paid': 'I', Creative: 'C', RevOps: 'I', 'Sales / SDR': 'C' },
+      abm: { 'Demand gen': 'R', PMM: 'I', Field: 'C', Partner: 'I', 'Paid': 'C', Creative: 'I', RevOps: 'C', 'Sales / SDR': 'C' },
+      measure: { 'Demand gen': 'C', PMM: 'I', Field: 'I', Partner: 'I', 'Paid': 'I', Creative: 'I', RevOps: 'R', 'Sales / SDR': 'C' }
     };
     if (fixed[w.key]) return fixed[w.key][f] || '–';
     if (f === w.owner) return 'R';
@@ -2018,7 +2018,7 @@
 
   /* ---------- paid brief ---------- */
   function paidBrief(P) {
-    const paid = P.channels.filter((c) => c.owner === 'Paid (shared svc)');
+    const paid = P.channels.filter((c) => c.owner === 'Paid');
     const mql = paid.reduce((s, c) => s + c.mql, 0), pipe = paid.reduce((s, c) => s + c.pipe, 0), cost = paid.reduce((s, c) => s + c.cost, 0);
     const lines = [];
     lines.push('PAID MEDIA BRIEF · ' + (S.name || 'Untitled plan') + (S.fy ? ' (' + S.fy + ')' : ''));
@@ -2215,7 +2215,7 @@
     $('btn-plan-open').onclick = () => $('in-plan-file').click();
     $('in-plan-file').onchange = async (e) => {
       const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-      try { const d = JSON.parse(await f.text()), p = d && d.plan ? d.plan : d; if (!p || !Array.isArray(p.campaigns) || !Array.isArray(p.channels)) throw new Error('not a Global Campaigns Hub plan file');
+      try { const d = JSON.parse((await f.text()).split('Paid (shared svc)').join('Paid')), p = d && d.plan ? d.plan : d; if (!p || !Array.isArray(p.campaigns) || !Array.isArray(p.channels)) throw new Error('not a Global Campaigns Hub plan file');
         S = fill(p); save(); bindInputs(); showPill(); render(); toast('Opened ' + (S.name || f.name)); } catch (x) { toast('Could not open that file: ' + x.message); }
     };
     $('in-actuals-file').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importActuals(f); };

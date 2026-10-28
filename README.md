@@ -48,7 +48,7 @@ Set once when you build the plan, grouped as Strategy, Targets, Audience, Progra
 | Regions | Regional plans | The regional roll-up, a regional digest of what to act on first, and a section and digest per region, with an optional Claude-written read |
 | | Buying committee & ABM | Asset status, an offer matrix by role and stage, a to-do list, and ABM by region, with a region picker |
 | Execution | Team & owners | Team load against capacity, SLAs and escalation paths, and a RACI |
-| | Paid brief | A copy-ready brief for the paid media shared service |
+| | Paid brief | A copy-ready brief for the paid media team |
 | | Measurement | KPIs with targets, review cadence, owners and sources |
 | | Scenarios & asks | Asks of leadership, pipeline at 80%, 100% and 120% budget, and the cut order |
 | | Risks | Risk cards with signal, trigger and contingency |
