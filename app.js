@@ -1122,6 +1122,54 @@
     return '<div class="guide"><div class="ghead"><b>How to read this tab</b><button type="button" class="linkbtn" id="guide-x">Hide</button></div><ol>' + g.map((x) => '<li>' + x + '</li>').join('') + '</ol>' +
       '<p class="note">Campaign assumptions can be adjusted. Use <button type="button" class="linkbtn" data-edit>Edit assumptions</button> at the top right.</p></div>';
   }
+  // every plan check, shared by the Check the math tab and the badge at the top of every tab
+  function mathChecks(P) {
+    const tol = (a, b) => Math.abs(a - b) <= Math.max(1, Math.abs(b) * 0.005);
+    const sumIn = (rows, k) => rows.reduce((a, r) => a + Math.max(0, num(r[k])), 0);
+    const sum = (arr, f) => arr.reduce((a, x) => a + f(x), 0);
+    const ties = [], inputs = [];
+    const tie = (what, a, b, fmt, how) => ties.push([what, fmt(a), fmt(b), tol(a, b), how]);
+    // 1. do the outputs tie back to the inputs and to each other
+    tie('Pipeline goal → funnel pipeline', num(S.goal), P.tot.pipe, money, 'The goal you typed should equal the sum of segment pipeline.');
+    tie('Segments: SQOs × deal size', sum(P.segs, (x) => x.sqo * x.acv), P.tot.pipe, money, 'Each segment\'s SQOs times its deal size, added up.');
+    tie('Segments: MQLs × MQL → SQO rate', sum(S.segments.map((x, i) => [x, P.segs[i]]), ([x, g]) => g.mql * num(x.mqlSqo) / 100), P.tot.sqo, fmtInt, 'Each segment\'s MQLs times its conversion rate, added up.');
+    tie('Regions add up to total MQLs', sum(P.regions, (r) => r.mql), P.tot.mql, fmtInt, 'Region MQL targets on the Regional plans tab.');
+    P.regions.forEach((r) => tie(r.name + ': HQ delivers + region owes', r.fromHq + r.owes, r.mql, fmtInt, 'What HQ programs deliver plus what the region owes should equal its target.'));
+    tie('Regions: committed = sum of their programs', sum(P.regions, (r) => r.committed), sum(P.regions, (r) => sum(r.plan.programs || [], (x) => Math.max(0, num(x.mql)))), fmtInt, 'Committed MQLs should match the uploaded program rows.');
+    tie('Channels add up to total MQLs', sum(P.channels, (c) => c.mql), P.tot.mql, fmtInt, 'Channel mix tab.');
+    tie('Channel budgets add up to program budget', sum(P.channels, (c) => c.cost), P.budget, money, 'Each channel is its MQLs × cost per MQL.');
+    tie('Months add up to total MQLs', sum(P.monthly, (x) => x), P.tot.mql, fmtInt, 'Timeline and pacing use these monthly numbers.');
+    tie('Monthly spend adds up to budget', sum(P.monthlyCost, (x) => x), P.budget, money, 'Budget phasing by month.');
+    tie('Quarters add up to total pipeline', sum(P.quarters, (q) => q.pipe), P.tot.pipe, money, 'Quarterly plan tab.');
+    tie('Campaigns add up to total pipeline', sum(P.camps, (c) => c.pipe), P.camps.length ? P.tot.pipe : 0, money, 'Campaigns tab. Shares are rebalanced to 100% if they don\'t add up.');
+    tie('Products add up to total pipeline', sum(P.products, (x) => x.pipe), P.tot.pipe, money, 'Product mix.');
+    // 2. inputs worth a second look
+    const shares = [['Segment shares', S.segments, 'share'], ['Region shares', S.regions, 'share'], ['Channel shares (on)', S.channels.filter((c) => c.on), 'share'], ['Campaign shares', S.campaigns, 'share'], ['Product shares', S.products, 'share'], ['ABM tier shares', S.tiers, 'share']];
+    const offCh = S.channels.filter((c) => !c.on).length, onT = sumIn(S.channels.filter((c) => c.on), 'share');
+    if (offCh && Math.round(onT) !== 100) { shares.splice(2, 1); inputs.push(['ok', 'Programs that are on add to ' + fmtInt(onT) + '% with ' + offCh + ' turned off. They are rebalanced to 100%, which is expected when a plan doesn\'t run every program.']); }
+    shares.forEach(([l, rows, k]) => { if (!rows.length) return; const t = sumIn(rows, k); inputs.push([Math.round(t) === 100 ? 'ok' : 'watch', l + ' add to ' + fmtInt(t) + '%' + (Math.round(t) === 100 ? '' : '. The dashboard rescales them to 100%, so every number built on them moves. Fix the inputs so what you typed is what you see.')]); });
+    const r1 = num(S.r1), r3 = num(S.r3);
+    if (r1 <= 0 || r1 > 100) inputs.push(['fix', 'Lead → MQL rate is ' + r1 + '%. It should be between 1 and 100.']);
+    if (r3 <= 0 || r3 > 100) inputs.push(['fix', 'SQO → won rate is ' + r3 + '%. It should be between 1 and 100.']);
+    S.segments.forEach((x) => { if (!(num(x.acv) > 0)) inputs.push(['fix', esc(x.name || 'A segment') + ' has no deal size, so its SQOs can\'t be worked out.']); const m = num(x.mqlSqo); if (m <= 0 || m > 60) inputs.push(['watch', esc(x.name || 'A segment') + ' MQL → SQO is ' + m + '%. Most B2B plans sit between 10% and 35%.']); });
+    const cpms = S.channels.filter((c) => c.on).map((c) => num(c.cpm)).filter((x) => x > 0).sort((a, b) => a - b), med = cpms.length ? cpms[Math.floor(cpms.length / 2)] : 0;
+    S.channels.filter((c) => c.on).forEach((c) => { const v = num(c.cpm); if (!(v > 0)) inputs.push(['watch', esc(c.name) + ' has no cost per MQL, so it counts as free in the budget.']); else if (med && v > med * 5) inputs.push(['watch', esc(c.name) + ' costs ' + money(v) + ' per MQL, more than 5× the typical ' + money(med) + '. Check it isn\'t a typo.']); });
+    P.regions.forEach((r) => (r.plan.programs || []).forEach((x) => {
+      const m = Math.round(num(x.month));
+      if (m < 1 || m > 12) inputs.push(['fix', esc(r.name) + ': "' + esc(x.name) + '" has month ' + esc(String(x.month)) + '. Months run 1 to 12.']);
+      if (num(x.mql) > 0 && !(num(x.budget) > 0)) inputs.push(['watch', esc(r.name) + ': "' + esc(x.name) + '" has MQLs but no budget.']);
+      if (num(x.budget) > 0 && num(x.mql) > 0 && num(x.budget) / num(x.mql) > cpms[cpms.length - 1] * 3 && cpms.length) inputs.push(['watch', esc(r.name) + ': "' + esc(x.name) + '" works out to ' + money(num(x.budget) / num(x.mql)) + ' per MQL. Check the budget or MQL column.']);
+    }));
+    S.actuals.forEach((a) => { if (num(a.sqo) > num(a.mql) && num(a.mql)) inputs.push(['fix', 'Actuals for ' + (P.labels[Math.round(num(a.month)) - 1] || 'a month') + ' show more SQOs than MQLs.']); });
+    const okIn = inputs.filter((x) => x[0] !== 'ok').length;
+    const okTies = ties.filter((t) => t[3]).length;
+    return { ties, inputs, okIn, okTies, flagged: ties.length - okTies + okIn };
+  }
+  function mathBadge(P) {
+    if (tab === 'checks') return '';
+    const m = mathChecks(P);
+    return '<a href="#tab=checks" class="mathbadge' + (m.flagged ? ' warn' : '') + '" data-go="checks">' + (m.flagged ? m.flagged + ' plan check' + (m.flagged > 1 ? 's' : '') + ' to look at' : '✓ All ' + m.ties.length + ' plan checks pass') + '</a>';
+  }
   function render() {
     const P = extend(compute());
     const a = document.activeElement, sel = a && 'selectionStart' in a ? [a.selectionStart, a.selectionEnd] : null;
@@ -1129,6 +1177,7 @@
     $('panel').innerHTML = (VIEWS[tab] || VIEWS2[tab])(P);
     const head = $('panel').firstElementChild;
     if (head) head.insertAdjacentHTML('afterend', guideBox() + feedsStrip()); else $('panel').insertAdjacentHTML('afterbegin', guideBox() + feedsStrip());
+    $('panel').insertAdjacentHTML('afterbegin', mathBadge(P));
     if (UPD[tab]) {
       const card = $('upd-' + UPD[tab]), first = $('panel').querySelector('.feeds');
       if (first) first.after(card); else $('panel').prepend(card);
@@ -1723,47 +1772,9 @@
         '<div class="out"><table class="t acts" data-export><thead><tr><th>Done</th><th>Status</th><th>Action</th><th>Campaign or area</th><th>Owner</th><th>Due</th></tr></thead><tbody>' + (rows || '<tr><td colspan="6" class="note">Nothing due.</td></tr>') + '</tbody></table></div>';
     },
     checks(P) {
-      const tol = (a, b) => Math.abs(a - b) <= Math.max(1, Math.abs(b) * 0.005);
-      const sumIn = (rows, k) => rows.reduce((a, r) => a + Math.max(0, num(r[k])), 0);
-      const sum = (arr, f) => arr.reduce((a, x) => a + f(x), 0);
-      const ties = [], inputs = [];
-      const tie = (what, a, b, fmt, how) => ties.push([what, fmt(a), fmt(b), tol(a, b), how]);
-      // 1. do the outputs tie back to the inputs and to each other
-      tie('Pipeline goal → funnel pipeline', num(S.goal), P.tot.pipe, money, 'The goal you typed should equal the sum of segment pipeline.');
-      tie('Segments: SQOs × deal size', sum(P.segs, (x) => x.sqo * x.acv), P.tot.pipe, money, 'Each segment\'s SQOs times its deal size, added up.');
-      tie('Segments: MQLs × MQL → SQO rate', sum(S.segments.map((x, i) => [x, P.segs[i]]), ([x, g]) => g.mql * num(x.mqlSqo) / 100), P.tot.sqo, fmtInt, 'Each segment\'s MQLs times its conversion rate, added up.');
-      tie('Regions add up to total MQLs', sum(P.regions, (r) => r.mql), P.tot.mql, fmtInt, 'Region MQL targets on the Regional plans tab.');
-      P.regions.forEach((r) => tie(r.name + ': HQ delivers + region owes', r.fromHq + r.owes, r.mql, fmtInt, 'What HQ programs deliver plus what the region owes should equal its target.'));
-      tie('Regions: committed = sum of their programs', sum(P.regions, (r) => r.committed), sum(P.regions, (r) => sum(r.plan.programs || [], (x) => Math.max(0, num(x.mql)))), fmtInt, 'Committed MQLs should match the uploaded program rows.');
-      tie('Channels add up to total MQLs', sum(P.channels, (c) => c.mql), P.tot.mql, fmtInt, 'Channel mix tab.');
-      tie('Channel budgets add up to program budget', sum(P.channels, (c) => c.cost), P.budget, money, 'Each channel is its MQLs × cost per MQL.');
-      tie('Months add up to total MQLs', sum(P.monthly, (x) => x), P.tot.mql, fmtInt, 'Timeline and pacing use these monthly numbers.');
-      tie('Monthly spend adds up to budget', sum(P.monthlyCost, (x) => x), P.budget, money, 'Budget phasing by month.');
-      tie('Quarters add up to total pipeline', sum(P.quarters, (q) => q.pipe), P.tot.pipe, money, 'Quarterly plan tab.');
-      tie('Campaigns add up to total pipeline', sum(P.camps, (c) => c.pipe), P.camps.length ? P.tot.pipe : 0, money, 'Campaigns tab. Shares are rebalanced to 100% if they don\'t add up.');
-      tie('Products add up to total pipeline', sum(P.products, (x) => x.pipe), P.tot.pipe, money, 'Product mix.');
-      // 2. inputs worth a second look
-      const shares = [['Segment shares', S.segments, 'share'], ['Region shares', S.regions, 'share'], ['Channel shares (on)', S.channels.filter((c) => c.on), 'share'], ['Campaign shares', S.campaigns, 'share'], ['Product shares', S.products, 'share'], ['ABM tier shares', S.tiers, 'share']];
-      const offCh = S.channels.filter((c) => !c.on).length, onT = sumIn(S.channels.filter((c) => c.on), 'share');
-      if (offCh && Math.round(onT) !== 100) { shares.splice(2, 1); inputs.push(['ok', 'Programs that are on add to ' + fmtInt(onT) + '% with ' + offCh + ' turned off. They are rebalanced to 100%, which is expected when a plan doesn\'t run every program.']); }
-      shares.forEach(([l, rows, k]) => { if (!rows.length) return; const t = sumIn(rows, k); inputs.push([Math.round(t) === 100 ? 'ok' : 'watch', l + ' add to ' + fmtInt(t) + '%' + (Math.round(t) === 100 ? '' : '. The dashboard rescales them to 100%, so every number built on them moves. Fix the inputs so what you typed is what you see.')]); });
-      const r1 = num(S.r1), r3 = num(S.r3);
-      if (r1 <= 0 || r1 > 100) inputs.push(['fix', 'Lead → MQL rate is ' + r1 + '%. It should be between 1 and 100.']);
-      if (r3 <= 0 || r3 > 100) inputs.push(['fix', 'SQO → won rate is ' + r3 + '%. It should be between 1 and 100.']);
-      S.segments.forEach((x) => { if (!(num(x.acv) > 0)) inputs.push(['fix', esc(x.name || 'A segment') + ' has no deal size, so its SQOs can\'t be worked out.']); const m = num(x.mqlSqo); if (m <= 0 || m > 60) inputs.push(['watch', esc(x.name || 'A segment') + ' MQL → SQO is ' + m + '%. Most B2B plans sit between 10% and 35%.']); });
-      const cpms = S.channels.filter((c) => c.on).map((c) => num(c.cpm)).filter((x) => x > 0).sort((a, b) => a - b), med = cpms.length ? cpms[Math.floor(cpms.length / 2)] : 0;
-      S.channels.filter((c) => c.on).forEach((c) => { const v = num(c.cpm); if (!(v > 0)) inputs.push(['watch', esc(c.name) + ' has no cost per MQL, so it counts as free in the budget.']); else if (med && v > med * 5) inputs.push(['watch', esc(c.name) + ' costs ' + money(v) + ' per MQL, more than 5× the typical ' + money(med) + '. Check it isn\'t a typo.']); });
-      P.regions.forEach((r) => (r.plan.programs || []).forEach((x) => {
-        const m = Math.round(num(x.month));
-        if (m < 1 || m > 12) inputs.push(['fix', esc(r.name) + ': "' + esc(x.name) + '" has month ' + esc(String(x.month)) + '. Months run 1 to 12.']);
-        if (num(x.mql) > 0 && !(num(x.budget) > 0)) inputs.push(['watch', esc(r.name) + ': "' + esc(x.name) + '" has MQLs but no budget.']);
-        if (num(x.budget) > 0 && num(x.mql) > 0 && num(x.budget) / num(x.mql) > cpms[cpms.length - 1] * 3 && cpms.length) inputs.push(['watch', esc(r.name) + ': "' + esc(x.name) + '" works out to ' + money(num(x.budget) / num(x.mql)) + ' per MQL. Check the budget or MQL column.']);
-      }));
-      S.actuals.forEach((a) => { if (num(a.sqo) > num(a.mql) && num(a.mql)) inputs.push(['fix', 'Actuals for ' + (P.labels[Math.round(num(a.month)) - 1] || 'a month') + ' show more SQOs than MQLs.']); });
-      const okIn = inputs.filter((x) => x[0] !== 'ok').length;
-      const okTies = ties.filter((t) => t[3]).length;
+      const { ties, inputs, okIn, okTies } = mathChecks(P);
       const rows = ties.map(([w, a, b, ok, how]) => '<tr><td>' + esc(w) + '<div class="note">' + how + '</div></td><td class="n">' + a + '</td><td class="n">' + b + '</td><td>' + hp(ok ? 'ok' : 'fix', ok ? 'Ties' : 'Off') + '</td></tr>').join('');
-      return '<div><h2>Check the math</h2><p class="lead">Every number on the dashboard is built from the planning assumptions in the left pane and the weekly updates in Execution. This tab re-adds the totals a second way to prove they tie out, and flags inputs that look wrong. Tap any row label elsewhere in the hub to see how that number is built.</p></div>' +
+      return '<div><h2>Check the math</h2><p class="lead">Every number on the dashboard is built from the planning assumptions in the left pane and the weekly updates in Execution. This tab re-adds the totals a second way to prove they tie out, and flags inputs that look wrong. Tap any row label elsewhere in the hub to see how that number is built.</p><p class="note">Check the math is the last tab. The badge at the top of every other tab shows whether all ' + ties.length + ' plan checks pass; tap it to come here. If you still see an older version of the hub, a hard refresh (Ctrl+Shift+R, or Cmd+Shift+R on a Mac) loads the latest.</p></div>' +
         '<div class="tiles"><div class="tile' + (okTies < ties.length ? ' alert' : '') + '"><span>Totals that tie out</span><b>' + okTies + ' of ' + ties.length + '</b><span>within 0.5% rounding</span></div>' +
         '<div class="tile' + (okIn ? ' alert' : '') + '"><span>Inputs to check</span><b>' + okIn + '</b><span>' + (okIn ? 'listed below' : 'none flagged') + '</span></div></div>' +
         '<h3>Inputs to check</h3><div class="health">' + (inputs.length ? inputs.sort((a, b) => (a[0] === 'ok') - (b[0] === 'ok')).map(([k, t]) => hp(k, k === 'fix' ? 'Fix' : k === 'watch' ? 'Check' : 'OK') + '<span>' + t + '</span>').join('') : hp('ok', 'OK') + '<span>Nothing looks off.</span>') + '</div>' +
